@@ -866,10 +866,18 @@
           // 4. Documents
           var tdResources = h('td', { class: 'text-xs align-top break-all' }, docsNode(f.documents));
           // 5. Attachments + 6. Comments
-          var tdAttach = h('td', { class: 'text-xs align-top break-all' },
-            h('div', { class: 'line-clamp-2', title: f.attachments || '' }, f.attachments || '-'));
-          var tdRemarks = h('td', { class: 'text-xs align-top text-base-content/80' },
-            h('div', { class: 'line-clamp-2 break-all', title: f.comments || '' }, f.comments || '-'));
+          function clampToggle(text) {
+            return h('div', {
+              class: 'line-clamp-2 break-all cursor-pointer',
+              title: i18n.t('點擊展開 / 收合', 'Click to expand / collapse'),
+              onclick: function (ev) {
+                if (String(window.getSelection()).length) return;
+                ev.currentTarget.classList.toggle('line-clamp-2');
+              }
+            }, text || '-');
+          }
+          var tdAttach = h('td', { class: 'text-xs align-top break-all' }, clampToggle(f.attachments));
+          var tdRemarks = h('td', { class: 'text-xs align-top text-base-content/80' }, clampToggle(f.comments));
 
           // 7. Status + 操作
           var tdStatus = h('td', { class: 'align-top text-center space-y-1.5' });
