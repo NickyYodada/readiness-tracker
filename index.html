@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>載入中…</title>
+<!-- index.html：只可修改 #appRoot 內的畫面結構；<head>、頁首、#gate、#adminOverlay 由系統使用，禁止修改。 -->
+<script src="config.js"></script>
+<script src="theme.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.0.0/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.0.0/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.0.0"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="navbar bg-base-100 shadow-sm px-4">
+  <div class="flex-1"><span class="text-lg font-semibold" id="brand"></span></div>
+  <div id="userbar" class="flex items-center gap-2" hidden></div>
+  <div id="mwsTheme" class="flex items-center gap-1 ml-2"></div>
+</header>
+<main class="max-w-3xl mx-auto my-6 px-4">
+  <section id="gate" class="card bg-base-100 shadow-sm max-w-md mx-auto">
+    <div class="card-body">
+      <h2 class="card-title text-xl">登入</h2>
+      <p id="gateMsg" class="mws-note">載入中…</p>
+      <div id="authRoot"></div>
+      <div class="card-actions justify-end">
+        <button id="gateClose" type="button" class="btn btn-ghost btn-sm" hidden>返回</button>
+      </div>
+      <noscript>需要啟用 JavaScript 才能使用本網站。</noscript>
+    </div>
+  </section>
+
+  <!-- ═══ 擴充區開始：以下 #appRoot 內可自由修改（靜態結構寫 HTML，動態資料由 app.js 以 textContent 填入，禁止在 HTML 寫死業務資料）═══ -->
+  <div id="appRoot" hidden>
+    <section class="app space-y-6">
+      <!-- 頂部列：標題、同步狀態與新增學員 -->
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 class="text-2xl font-bold flex items-center gap-2">
+            <i class="fa-solid fa-book-open-reader text-primary" aria-hidden="true"></i>
+            <span data-i18n-zh="Readiness Tracker" data-i18n-en="Readiness Tracker">Readiness Tracker</span>
+          </h1>
+          <p class="text-sm text-base-content/70 mt-0.5" data-i18n-zh="追蹤各階段學習課綱（Timeline / Phase / Key Topics）與 Mentor 每週 Checkpoint 評估" data-i18n-en="Track onboarding study stages (Timeline / Phase / Key Topics) and weekly Mentor checkpoints">追蹤各階段學習課綱（Timeline / Phase / Key Topics）與 Mentor 每週 Checkpoint 評估</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="statusText" class="badge badge-ghost badge-sm">載入中…</span>
+          <button id="refreshBtn" type="button" class="btn btn-sm btn-ghost">
+            <i class="fa-solid fa-rotate" aria-hidden="true"></i><span data-i18n-zh="重新整理" data-i18n-en="Refresh">重新整理</span>
+          </button>
+          <button id="manageTemplateBtn" type="button" class="btn btn-sm btn-soft btn-secondary" hidden>
+            <i class="fa-solid fa-sliders" aria-hidden="true"></i><span data-i18n-zh="編輯課綱範本" data-i18n-en="Edit Curriculum Template">編輯課綱範本</span>
+          </button>
+          <button id="addHireBtn" type="button" class="btn btn-sm btn-primary" hidden>
+            <i class="fa-solid fa-user-plus" aria-hidden="true"></i><span data-i18n-zh="新增學員" data-i18n-en="Add Learner">新增學員</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="errBox" class="alert alert-error text-sm" hidden></div>
+
+      <!-- 學員切換與基本資訊卡 -->
+      <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-4 space-y-4">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-2 flex-wrap flex-1 min-w-60">
+              <label for="hireSelect" class="text-sm font-medium whitespace-nowrap">
+                <i class="fa-solid fa-user-graduate text-primary mr-1" aria-hidden="true"></i><span data-i18n-zh="選擇學員：" data-i18n-en="Learner:">選擇學員：</span>
+              </label>
+              <select id="hireSelect" class="select select-sm select-bordered flex-1 max-w-xs"></select>
+            </div>
+            <div id="hireActions" class="flex items-center gap-1 flex-wrap" hidden>
+              <button id="applyTemplateBtn" type="button" class="btn btn-xs btn-soft btn-primary">
+                <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span data-i18n-zh="套用預設課綱範本" data-i18n-en="Apply Default Curriculum">套用預設課綱範本</span>
+              </button>
+              <button id="editHireBtn" type="button" class="btn btn-xs btn-ghost">
+                <i class="fa-regular fa-pen-to-square" aria-hidden="true"></i><span data-i18n-zh="編輯學員" data-i18n-en="Edit Learner">編輯學員</span>
+              </button>
+              <button id="deleteHireBtn" type="button" class="btn btn-xs btn-ghost text-error">
+                <i class="fa-regular fa-trash-can" aria-hidden="true"></i><span data-i18n-zh="刪除學員" data-i18n-en="Delete Learner">刪除學員</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 學員詳細資訊與總體統計 -->
+          <div id="hireSummary" class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-base-200" hidden>
+            <div class="bg-base-200/60 rounded-box p-3">
+              <div class="text-xs text-base-content/60" data-i18n-zh="學員 / 部門" data-i18n-en="Learner / Team">學員 / 部門</div>
+              <div id="infoHireName" class="font-semibold text-base mt-0.5">-</div>
+              <div id="infoHireRole" class="text-xs text-base-content/70">-</div>
+            </div>
+            <div class="bg-base-200/60 rounded-box p-3">
+              <div class="text-xs text-base-content/60" data-i18n-zh="指導 Mentor / 開始日" data-i18n-en="Mentor / Start Date">指導 Mentor / 開始日</div>
+              <div id="infoMentor" class="font-semibold text-base mt-0.5">-</div>
+              <div id="infoStartDate" class="text-xs text-base-content/70">-</div>
+            </div>
+            <div class="bg-base-200/60 rounded-box p-3">
+              <div class="text-xs text-base-content/60" data-i18n-zh="階段完成率 (Status)" data-i18n-en="Completion Rate">階段完成率 (Status)</div>
+              <div id="infoTaskRate" class="font-semibold text-base text-primary mt-0.5">0%</div>
+              <div id="infoTaskCount" class="text-xs text-base-content/70">0 / 0</div>
+            </div>
+            <div class="bg-base-200/60 rounded-box p-3">
+              <div class="text-xs text-base-content/60" data-i18n-zh="最新 Mentor 評估" data-i18n-en="Latest Mentor Checkpoint">最新 Mentor 評估</div>
+              <div id="infoLatestEval" class="mt-1">-</div>
+              <div id="infoLatestWeek" class="text-xs text-base-content/70 mt-0.5">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 尚無學員時的空狀態 -->
+      <div id="emptyHireState" class="card bg-base-100 shadow-sm border border-base-300" hidden>
+        <div class="card-body items-center text-center py-10">
+          <i class="fa-solid fa-seedling text-4xl text-primary/70 mb-2" aria-hidden="true"></i>
+          <h2 class="card-title text-lg" data-i18n-zh="尚未建立讀書計畫" data-i18n-en="No Study Plan Yet">尚未建立讀書計畫</h2>
+          <p class="text-sm text-base-content/70" data-i18n-zh="請點選右上角「新增學員」（可同時勾選自動套用預設課綱範本）開始追蹤。" data-i18n-en="Click 'Add Learner' at the top right (with auto-apply curriculum checked) to get started.">請點選右上角「新增學員」（可同時勾選自動套用預設課綱範本）開始追蹤。</p>
+        </div>
+      </div>
+
+      <!-- 主工作區（選定學員後顯示） -->
+      <div id="workspace" class="space-y-5" hidden>
+        <!-- 篩選列與新增按鈕 -->
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <div id="weekTabs" role="tablist" class="tabs tabs-box bg-base-200 p-1 flex-wrap"></div>
+            <button id="quickAddCycleBtn" type="button" class="btn btn-xs btn-ghost text-primary" hidden>
+              <i class="fa-solid fa-plus" aria-hidden="true"></i><span data-i18n-zh="新增週期" data-i18n-en="Add Cycle">新增週期</span>
+            </button>
+            <button id="deleteCycleBtn" type="button" class="btn btn-xs btn-ghost text-error" hidden>
+              <i class="fa-regular fa-trash-can" aria-hidden="true"></i><span data-i18n-zh="刪除此週期" data-i18n-en="Delete Cycle">刪除此週期</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="autoDateBtn" type="button" class="btn btn-sm btn-soft btn-secondary" hidden>
+              <i class="fa-solid fa-calendar-days" aria-hidden="true"></i><span data-i18n-zh="依開始日推算各週日期" data-i18n-en="Auto-Fill Dates from Start Date">依開始日推算各週日期</span>
+            </button>
+            <button id="addTaskBtn" type="button" class="btn btn-sm btn-primary" hidden>
+              <i class="fa-solid fa-plus" aria-hidden="true"></i><span data-i18n-zh="新增週期 / 階段" data-i18n-en="Add Cycle / Stage">新增週期 / 階段</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 6 欄讀書計畫總覽表 (Study Plan Table) -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+          <div class="card-body p-4 space-y-3">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <h2 id="weekTaskTitle" class="card-title text-base">
+                <i class="fa-solid fa-table-list text-primary" aria-hidden="true"></i>
+                <span data-i18n-zh="讀書計畫課綱總覽 (Study Plan &amp; Milestones)" data-i18n-en="Study Plan &amp; Milestones">讀書計畫課綱總覽 (Study Plan &amp; Milestones)</span>
+              </h2>
+              <span id="weekProgressBadge" class="badge badge-soft badge-primary badge-sm">0 / 0</span>
+            </div>
+
+            <div id="emptyTaskState" class="text-sm text-base-content/60 py-6 text-center bg-base-200/40 rounded-box" hidden></div>
+
+            <div id="tableWrap" class="overflow-x-auto rounded-box border border-base-200">
+              <table class="table table-sm w-full align-top">
+                <thead class="bg-base-200/70 text-xs">
+                  <tr>
+                    <th class="w-48">Timeline / Date Range</th>
+                    <th class="w-40">Phase / Domain</th>
+                    <th class="min-w-64">Key Topics &amp; Hands-on Tasks</th>
+                    <th class="w-36">Resources &amp; Format</th>
+                    <th class="w-44">Remarks / Milestones</th>
+                    <th class="w-36 text-center">Status &amp; Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="taskTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 下方：各階段 Mentor 進度評估 (Checkpoint) -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+          <div class="card-body p-4 space-y-3">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h2 id="weekReviewTitle" class="card-title text-base">
+                  <i class="fa-solid fa-clipboard-check text-secondary" aria-hidden="true"></i>
+                  <span data-i18n-zh="Mentor 階段進度評估 (Checkpoint)" data-i18n-en="Mentor Stage Checkpoint">Mentor 階段進度評估 (Checkpoint)</span>
+                </h2>
+                <select id="reviewStageSelect" class="select select-xs select-bordered"></select>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="reviewCurrentBadge"></span>
+                <button id="editReviewBtn" type="button" class="btn btn-xs btn-outline" hidden>
+                  <i class="fa-regular fa-pen-to-square" aria-hidden="true"></i><span data-i18n-zh="填寫 / 更新本階段評估" data-i18n-en="Write / Update Evaluation">填寫 / 更新本階段評估</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 檢視週評估內容 -->
+            <div id="reviewDisplay" class="space-y-2 text-sm"></div>
+
+            <!-- 編輯週評估表單 -->
+            <form id="reviewForm" class="space-y-3 pt-2 border-t border-base-200" hidden>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label class="form-control w-full">
+                  <div class="label py-1"><span class="label-text text-xs font-medium" data-i18n-zh="進度評估狀態 (Status)" data-i18n-en="Checkpoint Status">進度評估狀態 (Status)</span></div>
+                  <select id="reviewStatusInput" class="select select-bordered select-sm w-full">
+                    <option value="on_track" data-i18n-zh="符合預期 (On Track)" data-i18n-en="On Track">符合預期 (On Track)</option>
+                    <option value="ahead" data-i18n-zh="進度超前 (Ahead)" data-i18n-en="Ahead">進度超前 (Ahead)</option>
+                    <option value="attention" data-i18n-zh="需加強關注 (Needs Attention)" data-i18n-en="Needs Attention">需加強關注 (Needs Attention)</option>
+                    <option value="behind" data-i18n-zh="進度落後 (Behind)" data-i18n-en="Behind">進度落後 (Behind)</option>
+                  </select>
+                </label>
+                <label class="form-control w-full">
+                  <div class="label py-1"><span class="label-text text-xs font-medium" data-i18n-zh="評估 Mentor / 填寫人" data-i18n-en="Mentor / Reviewer">評估 Mentor / 填寫人</span></div>
+                  <input id="reviewMentorInput" type="text" class="input input-bordered input-sm w-full" placeholder="輸入 Mentor 姓名" data-i18n-placeholder-zh="輸入 Mentor 姓名" data-i18n-placeholder-en="Enter Mentor name">
+                </label>
+              </div>
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-xs font-medium" data-i18n-zh="Mentor 週評語與回饋 (Feedback &amp; Action Items)" data-i18n-en="Mentor Feedback &amp; Action Items">Mentor 週評語與回饋 (Feedback &amp; Action Items)</span></div>
+                <textarea id="reviewCommentInput" class="textarea textarea-bordered textarea-sm w-full" rows="3" placeholder="紀錄本階段學習吸收狀況、Lab 檢核結果或下階段建議方向…" data-i18n-placeholder-zh="紀錄本階段學習吸收狀況、Lab 檢核結果或下階段建議方向…" data-i18n-placeholder-en="Record learning progress, lab check results, or next steps…"></textarea>
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-xs font-medium" data-i18n-zh="學員心得與提問 (Learner Reflection)" data-i18n-en="Learner Reflection &amp; Questions">學員心得與提問 (Learner Reflection)</span></div>
+                <textarea id="reviewSummaryInput" class="textarea textarea-bordered textarea-sm w-full" rows="2" placeholder="學員可填寫本階段學習總結、Lab 進度或想請教 Mentor 的問題…" data-i18n-placeholder-zh="學員可填寫本階段學習總結、Lab 進度或想請教 Mentor 的問題…" data-i18n-placeholder-en="Write your key takeaways, lab progress, or questions for your Mentor…"></textarea>
+              </label>
+              <div class="flex justify-end gap-2 pt-1">
+                <button id="cancelReviewBtn" type="button" class="btn btn-sm btn-ghost" data-i18n-zh="取消" data-i18n-en="Cancel">取消</button>
+                <button type="submit" class="btn btn-sm btn-primary">
+                  <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i><span data-i18n-zh="儲存評估" data-i18n-en="Save Evaluation">儲存評估</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- 新增 / 編輯學員 Modal -->
+      <dialog id="hireModal" class="modal">
+        <div class="modal-box max-w-md">
+          <h3 id="hireModalTitle" class="font-bold text-lg mb-3">新增學員</h3>
+          <form id="hireForm" class="space-y-3">
+            <label class="form-control w-full">
+              <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="學員姓名 *" data-i18n-en="Learner Name *">學員姓名 *</span></div>
+              <input id="hireNameInput" type="text" class="input input-bordered input-sm w-full" required placeholder="例如：Alex Chen" data-i18n-placeholder-zh="例如：Alex Chen" data-i18n-placeholder-en="e.g., Alex Chen">
+            </label>
+            <label class="form-control w-full">
+              <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="指導 Mentor" data-i18n-en="Assigned Mentor">指導 Mentor</span></div>
+              <input id="hireMentorInput" type="text" class="input input-bordered input-sm w-full" placeholder="例如：Nicky" data-i18n-placeholder-zh="例如：Nicky" data-i18n-placeholder-en="e.g., Nicky">
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="部門" data-i18n-en="Team">部門</span></div>
+                <select id="hireRoleInput" class="select select-bordered select-sm w-full">
+                  <option value="" data-i18n-zh="（未選擇）" data-i18n-en="(None)">（未選擇）</option>
+                  <option value="Exchange">Exchange</option>
+                  <option value="Teams">Teams</option>
+                  <option value="ODSP">ODSP</option>
+                </select>
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="開始日期" data-i18n-en="Start Date">開始日期</span></div>
+                <input id="hireDateInput" type="date" class="input input-bordered input-sm w-full">
+              </label>
+            </div>
+            <label id="hireSeedWrap" class="label cursor-pointer justify-start gap-2 pt-2">
+              <input id="hireSeedCheckbox" type="checkbox" class="checkbox checkbox-sm checkbox-primary" checked>
+              <span class="label-text text-sm" data-i18n-zh="自動帶入預設讀書計畫課綱範本（5 個階段）" data-i18n-en="Auto-populate default curriculum template (5 stages)">自動帶入預設讀書計畫課綱範本（5 個階段）</span>
+            </label>
+            <div class="modal-action">
+              <button id="hireModalCancel" type="button" class="btn btn-sm btn-ghost" data-i18n-zh="取消" data-i18n-en="Cancel">取消</button>
+              <button type="submit" class="btn btn-sm btn-primary" data-i18n-zh="儲存" data-i18n-en="Save">儲存</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+
+      <!-- 新增 / 編輯讀書階段項目 Modal -->
+      <dialog id="taskModal" class="modal">
+        <div class="modal-box max-w-xl">
+          <h3 id="taskModalTitle" class="font-bold text-lg mb-3">新增讀書階段項目</h3>
+          <form id="taskForm" class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="週期順序 (1~52) *" data-i18n-en="Cycle Order (1~52) *">週期順序 (1~52) *</span></div>
+                <input id="taskWeekInput" type="number" min="1" max="52" class="input input-bordered input-sm w-full" required>
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="週期名稱 (Timeline) *" data-i18n-en="Cycle Label (Timeline) *">週期名稱 (Timeline) *</span></div>
+                <input id="taskTimelineInput" type="text" class="input input-bordered input-sm w-full" required placeholder="例如：Week 1" data-i18n-placeholder-zh="例如：Week 1" data-i18n-placeholder-en="e.g., Week 1">
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="Status 狀態" data-i18n-en="Status">Status 狀態</span></div>
+                <select id="taskStatusInput" class="select select-bordered select-sm w-full">
+                  <option value="pending">⏳ Pending</option>
+                  <option value="completed">✅ Completed</option>
+                  <option value="final_eval">🏁 Final Evaluation</option>
+                </select>
+              </label>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="開始日期 (Start Date)" data-i18n-en="Start Date">開始日期 (Start Date)</span></div>
+                <input id="taskStartDateInput" type="date" class="input input-bordered input-sm w-full">
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="結束日期 (End Date)" data-i18n-en="End Date">結束日期 (End Date)</span></div>
+                <input id="taskEndDateInput" type="date" class="input input-bordered input-sm w-full">
+              </label>
+            </div>
+            <label class="form-control w-full">
+              <div class="label py-1"><span class="label-text text-sm">Phase / Domain *</span></div>
+              <input id="taskTitleInput" type="text" class="input input-bordered input-sm w-full" required placeholder="例如：Phase 1 Fundamentals" data-i18n-placeholder-zh="例如：Phase 1 Fundamentals" data-i18n-placeholder-en="e.g., Phase 1 Fundamentals">
+            </label>
+            <label class="form-control w-full">
+              <div class="label py-1"><span class="label-text text-sm">Key Topics &amp; Hands-on Tasks *</span></div>
+              <textarea id="taskTopicsInput" class="textarea textarea-bordered textarea-sm w-full" rows="5" required placeholder="• 主題一：說明&#10;• 主題二：說明" data-i18n-placeholder-zh="• 主題一：說明&#10;• 主題二：說明" data-i18n-placeholder-en="• Topic 1: details&#10;• Topic 2: details"></textarea>
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm">Resources &amp; Format</span></div>
+                <input id="taskResourceTextInput" type="text" class="input input-bordered input-sm w-full" placeholder="例如：Microsoft Learn Docs, Support Wiki" data-i18n-placeholder-zh="例如：Microsoft Learn Docs, Support Wiki" data-i18n-placeholder-en="e.g., Microsoft Learn Docs, Support Wiki">
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="參考連結 URL（選填）" data-i18n-en="Reference URL (Optional)">參考連結 URL（選填）</span></div>
+                <input id="taskResourceInput" type="url" class="input input-bordered input-sm w-full" placeholder="https://...">
+              </label>
+            </div>
+            <label class="form-control w-full">
+              <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="Remarks / Milestones（重要里程碑與學員筆記）" data-i18n-en="Remarks / Milestones">Remarks / Milestones（重要里程碑與學員筆記）</span></div>
+              <textarea id="taskNoteInput" class="textarea textarea-bordered textarea-sm w-full" rows="2" placeholder="例如：Quick Overview / Lab Critical…" data-i18n-placeholder-zh="例如：Quick Overview / Lab Critical…" data-i18n-placeholder-en="e.g., Quick Overview / Lab Critical…"></textarea>
+            </label>
+            <div class="modal-action">
+              <button id="taskModalCancel" type="button" class="btn btn-sm btn-ghost" data-i18n-zh="取消" data-i18n-en="Cancel">取消</button>
+              <button type="submit" class="btn btn-sm btn-primary" data-i18n-zh="儲存項目" data-i18n-en="Save Stage">儲存項目</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+
+      <!-- 預設課綱範本管理 Modal -->
+      <dialog id="tplListModal" class="modal">
+        <div class="modal-box max-w-4xl space-y-4">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <h3 class="font-bold text-lg flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-secondary" aria-hidden="true"></i>
+                <span data-i18n-zh="管理預設課綱範本" data-i18n-en="Manage Default Curriculum Template">管理預設課綱範本</span>
+              </h3>
+              <p class="text-xs text-base-content/70 mt-0.5" data-i18n-zh="在此新增、編輯或刪除範本階段；日後新增學員或點選「套用預設課綱範本」時會自動帶入這份清單。" data-i18n-en="Add, edit, or delete template stages here. Applying the template will populate these stages for a learner.">在此新增、編輯或刪除範本階段；日後新增學員或點選「套用預設課綱範本」時會自動帶入這份清單。</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button id="saveCurrentAsTplBtn" type="button" class="btn btn-xs btn-soft">
+                <i class="fa-solid fa-file-import" aria-hidden="true"></i><span data-i18n-zh="將目前學員的課綱存為範本" data-i18n-en="Save Current Hire's Plan as Template">將目前學員的課綱存為範本</span>
+              </button>
+              <button id="addTplItemBtn" type="button" class="btn btn-xs btn-primary">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i><span data-i18n-zh="新增範本階段" data-i18n-en="Add Template Stage">新增範本階段</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto rounded-box border border-base-200 max-h-96">
+            <table class="table table-xs w-full align-top">
+              <thead class="bg-base-200/70">
+                <tr>
+                  <th class="w-14">#</th>
+                  <th class="w-28">Timeline</th>
+                  <th class="w-40">Phase / Domain</th>
+                  <th class="min-w-56">Key Topics</th>
+                  <th class="w-32">Resources</th>
+                  <th class="w-32">Remarks</th>
+                  <th class="w-24 text-center" data-i18n-zh="操作" data-i18n-en="Actions">操作</th>
+                </tr>
+              </thead>
+              <tbody id="tplTableBody"></tbody>
+            </table>
+          </div>
+
+          <!-- 內嵌新增 / 編輯單筆範本表單 -->
+          <form id="tplItemForm" class="p-3 rounded-box bg-base-200/60 border border-base-300 space-y-3" hidden>
+            <div class="font-semibold text-sm" id="tplFormTitle">編輯範本階段</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <label class="form-control w-full">
+                <div class="label py-0.5"><span class="label-text text-xs" data-i18n-zh="週期順序 (Week 1~52) *" data-i18n-en="Cycle Order (1~52) *">週期順序 (Week 1~52) *</span></div>
+                <input id="tplWeekInput" type="number" min="1" max="52" class="input input-bordered input-xs w-full" required>
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-0.5"><span class="label-text text-xs">Timeline *</span></div>
+                <input id="tplTimelineInput" type="text" class="input input-bordered input-xs w-full" required placeholder="例如：Week 1">
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-0.5"><span class="label-text text-xs" data-i18n-zh="預設狀態" data-i18n-en="Default Status">預設狀態</span></div>
+                <select id="tplStatusInput" class="select select-bordered select-xs w-full">
+                  <option value="pending">⏳ Pending</option>
+                  <option value="completed">✅ Completed</option>
+                  <option value="final_eval">🏁 Final Evaluation</option>
+                </select>
+              </label>
+            </div>
+            <label class="form-control w-full">
+              <div class="label py-0.5"><span class="label-text text-xs">Phase / Domain *</span></div>
+              <input id="tplPhaseInput" type="text" class="input input-bordered input-xs w-full" required>
+            </label>
+            <label class="form-control w-full">
+              <div class="label py-0.5"><span class="label-text text-xs">Key Topics &amp; Hands-on Tasks *</span></div>
+              <textarea id="tplTopicsInput" class="textarea textarea-bordered textarea-xs w-full" rows="4" required></textarea>
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label class="form-control w-full">
+                <div class="label py-0.5"><span class="label-text text-xs">Resources &amp; Format</span></div>
+                <input id="tplResourcesInput" type="text" class="input input-bordered input-xs w-full">
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-0.5"><span class="label-text text-xs" data-i18n-zh="參考連結 URL（選填）" data-i18n-en="Reference URL (Optional)">參考連結 URL（選填）</span></div>
+                <input id="tplResourceUrlInput" type="url" class="input input-bordered input-xs w-full" placeholder="https://...">
+              </label>
+            </div>
+            <label class="form-control w-full">
+              <div class="label py-0.5"><span class="label-text text-xs">Remarks / Milestones</span></div>
+              <textarea id="tplRemarksInput" class="textarea textarea-bordered textarea-xs w-full" rows="2"></textarea>
+            </label>
+            <div class="flex justify-end gap-2">
+              <button id="tplFormCancelBtn" type="button" class="btn btn-xs btn-ghost" data-i18n-zh="取消編輯" data-i18n-en="Cancel">取消編輯</button>
+              <button type="submit" class="btn btn-xs btn-primary" data-i18n-zh="儲存範本項目" data-i18n-en="Save Template Stage">儲存範本項目</button>
+            </div>
+          </form>
+
+          <div class="modal-action">
+            <button id="tplListCloseBtn" type="button" class="btn btn-sm btn-ghost" data-i18n-zh="關閉" data-i18n-en="Close">關閉</button>
+          </div>
+        </div>
+      </dialog>
+
+      <!-- 共用確認對話框 Modal（取代容易被內嵌瀏覽器攔截的原生 confirm/prompt） -->
+      <dialog id="confirmModal" class="modal">
+        <div class="modal-box max-w-md space-y-3">
+          <h3 id="confirmModalTitle" class="font-bold text-base flex items-center gap-2">
+            <i class="fa-solid fa-circle-question text-warning" aria-hidden="true"></i>
+            <span data-i18n-zh="請確認操作" data-i18n-en="Confirm Action">請確認操作</span>
+          </h3>
+          <p id="confirmModalMsg" class="text-sm text-base-content/80 whitespace-pre-wrap"></p>
+          <div id="confirmPromptWrap" class="pt-1" hidden>
+            <input id="confirmPromptInput" type="date" class="input input-bordered input-sm w-full">
+          </div>
+          <div class="modal-action">
+            <button id="confirmCancelBtn" type="button" class="btn btn-sm btn-ghost" data-i18n-zh="取消" data-i18n-en="Cancel">取消</button>
+            <button id="confirmOkBtn" type="button" class="btn btn-sm btn-primary" data-i18n-zh="確認執行" data-i18n-en="Confirm">確認執行</button>
+          </div>
+        </div>
+      </dialog>
+    </section>
+  </div>
+  <!-- ═══ 擴充區結束 ═══ -->
+</main>
+<dialog id="adminOverlay" class="modal">
+  <div class="modal-box max-w-3xl">
+    <h3 class="text-lg font-semibold mb-4">成員管理</h3>
+    <div id="adminRoot"></div>
+    <div class="modal-action">
+      <button id="adminClose" type="button" class="btn btn-ghost">關閉</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button aria-label="關閉">關閉</button></form>
+</dialog>
+</body>
+</html>
