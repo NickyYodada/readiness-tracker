@@ -798,19 +798,20 @@
           shownWeeks[wk] = true;
           var weekTaskIds = allTasks.filter(function (x) { return (Number(x.data.week) || 1) === wk; }).map(function (x) { return x.id; });
 
-          // 1. Category（每週第一列另顯示 Timeline 與日期範圍）
+          // 1. Category 分組標題列（每週一條，含 Timeline 與日期範圍）
           var timelineText = t.timeline || ('Week ' + wk);
-          var tdTimeline = h('td', { class: 'align-top space-y-1.5' });
-          if (firstOfWeek) {
-            tdTimeline.appendChild(h('div', { class: 'font-semibold text-xs whitespace-pre-line', text: timelineText }));
-          }
-          tdTimeline.appendChild(h('div', { class: 'text-sm font-semibold', text: f.phase || i18n.t('未命名階段', 'Untitled Stage') }));
+          var tdTimeline = h('td', { colspan: '6', class: 'bg-base-200/60 py-2' });
+          var groupBar = h('div', { class: 'flex items-center gap-x-3 gap-y-1 flex-wrap' },
+            h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: timelineText.split('\n')[0] }),
+            h('span', { class: 'text-sm font-semibold', text: (f.phase || i18n.t('未命名階段', 'Untitled Stage')).replace(/^\d+\.\s*/, '') })
+          );
+          tdTimeline.appendChild(groupBar);
 
           if (canWrite && firstOfWeek) {
-            var dateBox = h('div', { class: 'space-y-1 pt-0.5' });
+            var dateBox = h('div', { class: 'flex items-center gap-2 flex-wrap ml-auto' });
             var endInput = h('input', {
               type: 'date',
-              class: 'input input-bordered input-xs w-full text-xs',
+              class: 'input input-bordered input-xs w-32 text-xs',
               value: t.endDate || '',
               title: i18n.t('結束日期（修改後自動遞推後續週期）', 'End Date (auto-cascades following weeks)'),
               onchange: function (ev) {
@@ -824,7 +825,7 @@
             });
             var startInput = h('input', {
               type: 'date',
-              class: 'input input-bordered input-xs w-full text-xs',
+              class: 'input input-bordered input-xs w-32 text-xs',
               value: t.startDate || '',
               title: i18n.t('開始日期（選擇後自動帶入本週結束日並遞推後續週期）', 'Start Date (auto-fills End Date & cascades following weeks)'),
               onchange: function (ev) {
@@ -839,17 +840,17 @@
               }
             });
             dateBox.appendChild(h('div', { class: 'flex items-center gap-1 text-[11px] text-base-content/60' },
-              h('span', { class: 'w-7 shrink-0', text: i18n.t('起', 'From') }),
+              h('span', { class: 'shrink-0', text: i18n.t('起', 'From') }),
               startInput
             ));
             dateBox.appendChild(h('div', { class: 'flex items-center gap-1 text-[11px] text-base-content/60' },
-              h('span', { class: 'w-7 shrink-0', text: i18n.t('迄', 'To') }),
+              h('span', { class: 'shrink-0', text: i18n.t('迄', 'To') }),
               endInput
             ));
-            tdTimeline.appendChild(dateBox);
+            groupBar.appendChild(dateBox);
           } else if (!canWrite && firstOfWeek && (t.startDate || t.endDate)) {
             var rangeStr = (t.startDate || '?') + ' ~ ' + (t.endDate || '?');
-            tdTimeline.appendChild(h('div', { class: 'badge badge-ghost badge-xs font-normal', text: rangeStr }));
+            groupBar.appendChild(h('span', { class: 'badge badge-ghost badge-xs font-normal ml-auto', text: rangeStr }));
           }
 
           // 2. Title（選修加註 Optional 標籤）
@@ -929,7 +930,8 @@
             tdStatus.appendChild(rowActions);
           }
 
-          var tr = h('tr', { class: 'hover:bg-base-200/40' }, tdTimeline, tdPhase, tdTopics, tdResources, tdAttach, tdRemarks, tdStatus);
+          var tr = h('tr', { class: 'hover:bg-base-200/40' }, tdPhase, tdTopics, tdResources, tdAttach, tdRemarks, tdStatus);
+          if (firstOfWeek) taskTableBody.appendChild(h('tr', {}, tdTimeline));
           taskTableBody.appendChild(tr);
         });
       }
@@ -1012,13 +1014,23 @@
           );
           return;
         }
+        var lastTplWeek = null;
         list.forEach(function (tpl) {
           var id = tpl._id;
           var wk = Number(tpl.week) || Number(tpl.order) || 1;
           var f = itemFields(tpl);
+          if (lastTplWeek !== wk) {
+            lastTplWeek = wk;
+            tplTableBody.appendChild(h('tr', {},
+              h('td', { colspan: '6', class: 'bg-base-200/60 py-2' },
+                h('div', { class: 'flex items-center gap-2' },
+                  h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: tpl.timeline || ('Week ' + wk) }),
+                  h('span', { class: 'text-sm font-semibold', text: (f.phase || '').replace(/^\d+\.\s*/, '') })
+                )
+              )
+            ));
+          }
           var tr = h('tr', { class: 'hover:bg-base-200/40' },
-            h('td', { class: 'font-semibold align-top', text: String(wk) }),
-            h('td', { class: 'align-top font-medium', text: f.phase }),
             h('td', { class: 'whitespace-pre-wrap align-top' }, f.title, f.optional ? h('span', { class: 'badge badge-ghost badge-xs ml-1', text: 'Optional' }) : null),
             h('td', { class: 'align-top', text: f.duration || '-' }),
             h('td', { class: 'align-top break-all' }, docsNode(f.documents)),
