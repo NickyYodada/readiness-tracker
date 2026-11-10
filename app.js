@@ -213,6 +213,10 @@
       var taskStatusInput = $('taskStatusInput');
       var taskTitleInput = $('taskTitleInput');
       var taskTopicsInput = $('taskTopicsInput');
+      var taskDurationInput = $('taskDurationInput');
+      var taskOptionalInput = $('taskOptionalInput');
+      var tplDurationInput = $('tplDurationInput');
+      var tplOptionalInput = $('tplOptionalInput');
       var taskResourceTextInput = $('taskResourceTextInput');
       var taskResourceInput = $('taskResourceInput');
       var taskNoteInput = $('taskNoteInput');
@@ -330,7 +334,7 @@
         return rows;
       }
 
-      // 每個 Category 對應一個範本階段（一週），Title 條列成 Key Topics
+      // 每列 CSV 對應一個範本項目；每個 Category 為一週
       function csvToTemplateStages(text) {
         var rows = parseCsv(text);
         if (!rows.length) return [];
@@ -338,27 +342,56 @@
         var iCat = head.indexOf('Category');
         var iTitle = head.indexOf('Title');
         if (iCat < 0 || iTitle < 0) return [];
-        var iDur = head.indexOf('Duration');
-        var iDoc = head.indexOf('Documents');
-        var iMan = head.indexOf('Mandatory');
-        var groups = {};
+        var col = function (r, name) {
+          var i = head.indexOf(name);
+          return i >= 0 ? (r[i] || '').replace(/\s+/g, ' ').trim() : '';
+        };
+        var items = [];
         rows.slice(1).forEach(function (r) {
           var cat = (r[iCat] || '').trim();
-          var title = (r[iTitle] || '').trim();
+          var title = col(r, 'Title');
           if (!cat || !title) return;
-          var line = '- ' + title;
-          var dur = iDur >= 0 ? (r[iDur] || '').trim() : '';
-          if (dur) line += ' (' + dur + ')';
-          if (iMan >= 0 && /^false$/i.test((r[iMan] || '').trim())) line += ' [Optional]';
-          var doc = iDoc >= 0 ? (r[iDoc] || '').replace(/\s+/g, ' ').trim() : '';
-          if (doc) line += ' ' + doc;
-          (groups[cat] = groups[cat] || []).push(line);
+          items.push({
+            phase: cat.slice(0, 200),
+            title: title.slice(0, 2000),
+            duration: col(r, 'Duration').slice(0, 60),
+            documents: col(r, 'Documents').slice(0, 500),
+            attachments: col(r, 'Attachments').slice(0, 500),
+            comments: col(r, 'Comments').slice(0, 2000),
+            optional: /^false$/i.test(col(r, 'Mandatory'))
+          });
         });
-        return Object.keys(groups).sort(function (a, b) {
-          return a.localeCompare(b, undefined, { numeric: true });
-        }).map(function (cat) {
-          return { phase: cat.slice(0, 200), keyTopics: groups[cat].join('\n').slice(0, 8000) };
-        });
+        var cats = [];
+        items.forEach(function (it) { if (cats.indexOf(it.phase) < 0) cats.push(it.phase); });
+        cats.sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
+        items.forEach(function (it) { it.week = cats.indexOf(it.phase) + 1; });
+        return items.sort(function (a, b) { return a.week - b.week; });
+      }
+
+      // 新舊欄位相容：舊資料以 keyTopics / resources / resourceUrl / remarks 儲存
+      function itemTitle(t) { return t.keyTopics || t.title || ''; }
+      function itemDocs(t) { return t.documents !== undefined ? t.documents : (t.resourceUrl || ''); }
+      function itemAttach(t) { return t.attachments !== undefined ? t.attachments : (t.resources || ''); }
+      function itemComments(t) { return t.comments !== undefined ? t.comments : (t.remarks || ''); }
+      function itemFields(t) {
+        return {
+          phase: t.phase || '',
+          title: itemTitle(t),
+          duration: t.duration || '',
+          documents: itemDocs(t),
+          attachments: itemAttach(t),
+          comments: itemComments(t),
+          optional: !!t.optional
+        };
+      }
+      function docsNode(text) {
+        var href = safeUrl(text);
+        if (href) {
+          return h('a', { href: href, target: '_blank', rel: 'noopener noreferrer', class: 'link link-primary inline-flex items-center gap-1' },
+            h('i', { class: 'fa-solid fa-arrow-up-right-from-square', 'aria-hidden': 'true' }),
+            i18n.t('開啟連結', 'Open Link'));
+        }
+        return h('span', { class: 'whitespace-pre-wrap', text: text || '-' });
       }
 
       function tplSetOf(t) {
@@ -398,7 +431,10 @@
           var item = templatesMap[k];
           return item && tplSetOf(item) === selectedTplSet ? Object.assign({ _id: k }, item) : null;
         }).filter(Boolean).sort(function (a, b) {
-          return (Number(a.order) || Number(a.week) || 0) - (Number(b.order) || Number(b.week) || 0);
+          var wa = Number(a.week) || Number(a.order) || 0;
+          var wb = Number(b.week) || Number(b.order) || 0;
+          if (wa !== wb) return wa - wb;
+          return (Number(a.order) || 0) - (Number(b.order) || 0);
         });
       }
 
@@ -489,12 +525,12 @@
               startDate: range.startDate || '',
               endDate: range.endDate || '',
               phase: tpl.phase || '',
-              title: tpl.phase || '',
-              keyTopics: tpl.keyTopics || '',
-              resources: tpl.resources || '',
-              resourceUrl: tpl.resourceUrl || '',
-              remarks: tpl.remarks || '',
-              traineeNote: tpl.remarks || '',
+              title: itemTitle(tpl),
+              duration: tpl.duration || '',
+              documents: itemDocs(tpl),
+              attachments: itemAttach(tpl),
+              comments: itemComments(tpl),
+              optional: !!tpl.optional,
               status: tpl.defaultStatus || 'pending',
               createdAt: now + idx,
               updatedAt: now + idx,
@@ -750,19 +786,27 @@
         tableWrap.hidden = false;
         emptyTaskState.hidden = true;
 
+        var shownWeeks = {};
         filtered.forEach(function (item) {
           var id = item.id;
           var t = item.data;
           var wk = Number(t.week) || 1;
           var stKey = TASK_STATUS_META[t.status] ? t.status : 'pending';
           var stMeta = TASK_STATUS_META[stKey];
+          var f = itemFields(t);
+          var firstOfWeek = !shownWeeks[wk];
+          shownWeeks[wk] = true;
+          var weekTaskIds = allTasks.filter(function (x) { return (Number(x.data.week) || 1) === wk; }).map(function (x) { return x.id; });
 
-          // 1. Timeline + 內嵌時間範圍 (Start Date ~ End Date)
+          // 1. Category（每週第一列另顯示 Timeline 與日期範圍）
           var timelineText = t.timeline || ('Week ' + wk);
           var tdTimeline = h('td', { class: 'align-top space-y-1.5' });
-          tdTimeline.appendChild(h('div', { class: 'font-semibold text-xs whitespace-pre-line', text: timelineText }));
+          if (firstOfWeek) {
+            tdTimeline.appendChild(h('div', { class: 'font-semibold text-xs whitespace-pre-line', text: timelineText }));
+          }
+          tdTimeline.appendChild(h('div', { class: 'text-sm font-semibold', text: f.phase || i18n.t('未命名階段', 'Untitled Stage') }));
 
-          if (canWrite) {
+          if (canWrite && firstOfWeek) {
             var dateBox = h('div', { class: 'space-y-1 pt-0.5' });
             var endInput = h('input', {
               type: 'date',
@@ -771,7 +815,7 @@
               title: i18n.t('結束日期（修改後自動遞推後續週期）', 'End Date (auto-cascades following weeks)'),
               onchange: function (ev) {
                 var newEnd = ev.target.value || '';
-                var ops = [sync.save(COL_TASKS, id, { endDate: newEnd, updatedAt: Date.now() })];
+                var ops = weekTaskIds.map(function (tid) { return sync.save(COL_TASKS, tid, { endDate: newEnd, updatedAt: Date.now() }); });
                 if (newEnd) {
                   ops = ops.concat(buildCascadedTaskDateUpdates(selectedHireId, wk, newEnd));
                 }
@@ -787,7 +831,7 @@
                 var newStart = ev.target.value || '';
                 var autoEnd = newStart ? calcDefaultWorkEndDate(newStart) : (endInput.value || '');
                 if (autoEnd) endInput.value = autoEnd;
-                var ops = [sync.save(COL_TASKS, id, { startDate: newStart, endDate: autoEnd, updatedAt: Date.now() })];
+                var ops = weekTaskIds.map(function (tid) { return sync.save(COL_TASKS, tid, { startDate: newStart, endDate: autoEnd, updatedAt: Date.now() }); });
                 if (autoEnd) {
                   ops = ops.concat(buildCascadedTaskDateUpdates(selectedHireId, wk, autoEnd));
                 }
@@ -803,47 +847,28 @@
               endInput
             ));
             tdTimeline.appendChild(dateBox);
-          } else if (t.startDate || t.endDate) {
+          } else if (!canWrite && firstOfWeek && (t.startDate || t.endDate)) {
             var rangeStr = (t.startDate || '?') + ' ~ ' + (t.endDate || '?');
             tdTimeline.appendChild(h('div', { class: 'badge badge-ghost badge-xs font-normal', text: rangeStr }));
           }
 
-          // 2. Phase / Domain
-          var phaseText = t.phase || t.title || i18n.t('未命名階段', 'Untitled Stage');
-          var tdPhase = h('td', { class: 'font-semibold text-sm align-top' }, phaseText);
-
-          // 3. Key Topics & Hands-on Tasks
-          var topicsText = t.keyTopics || t.traineeNote || '';
-          var tdTopics = h('td', { class: 'text-xs leading-relaxed whitespace-pre-wrap align-top' }, topicsText);
-
-          // 4. Resources & Format
-          var tdResources = h('td', { class: 'text-xs align-top space-y-1' });
-          if (t.resources) {
-            tdResources.appendChild(h('div', { class: 'whitespace-pre-wrap', text: t.resources }));
-          }
-          var validHref = safeUrl(t.resourceUrl);
-          if (validHref) {
-            tdResources.appendChild(
-              h('a', {
-                href: validHref,
-                target: '_blank',
-                rel: 'noopener noreferrer',
-                class: 'link link-primary inline-flex items-center gap-1'
-              },
-                h('i', { class: 'fa-solid fa-arrow-up-right-from-square', 'aria-hidden': 'true' }),
-                i18n.t('開啟連結', 'Open Link')
-              )
-            );
-          }
-          if (!t.resources && !validHref) {
-            tdResources.appendChild(h('span', { class: 'text-base-content/40', text: '-' }));
+          // 2. Title（選修加註 Optional 標籤）
+          var phaseText = f.title || f.phase || i18n.t('未命名階段', 'Untitled Stage');
+          var tdPhase = h('td', { class: 'text-sm align-top whitespace-pre-wrap' }, phaseText);
+          if (f.optional) {
+            tdPhase.appendChild(h('span', { class: 'badge badge-ghost badge-xs ml-1', text: 'Optional' }));
           }
 
-          // 5. Remarks / Milestones
-          var remarksText = t.remarks !== undefined ? t.remarks : '';
-          var tdRemarks = h('td', { class: 'text-xs whitespace-pre-wrap align-top text-base-content/80' }, remarksText || '-');
+          // 3. Duration
+          var tdTopics = h('td', { class: 'text-xs align-top whitespace-nowrap' }, f.duration || '-');
 
-          // 6. Status + 操作
+          // 4. Documents
+          var tdResources = h('td', { class: 'text-xs align-top break-all' }, docsNode(f.documents));
+          // 5. Attachments + 6. Comments
+          var tdAttach = h('td', { class: 'text-xs align-top whitespace-pre-wrap' }, f.attachments || '-');
+          var tdRemarks = h('td', { class: 'text-xs whitespace-pre-wrap align-top text-base-content/80' }, f.comments || '-');
+
+          // 7. Status + 操作
           var tdStatus = h('td', { class: 'align-top text-center space-y-1.5' });
           var statusBtn = h('button', {
             type: 'button',
@@ -904,7 +929,7 @@
             tdStatus.appendChild(rowActions);
           }
 
-          var tr = h('tr', { class: 'hover:bg-base-200/40' }, tdTimeline, tdPhase, tdTopics, tdResources, tdRemarks, tdStatus);
+          var tr = h('tr', { class: 'hover:bg-base-200/40' }, tdTimeline, tdPhase, tdTopics, tdResources, tdAttach, tdRemarks, tdStatus);
           taskTableBody.appendChild(tr);
         });
       }
@@ -961,11 +986,14 @@
         tplWeekInput.value = wk;
         tplTimelineInput.value = (tplData && tplData.timeline) || ('Week ' + wk);
         tplStatusInput.value = (tplData && TASK_STATUS_META[tplData.defaultStatus] ? tplData.defaultStatus : 'pending');
-        tplPhaseInput.value = (tplData && tplData.phase) || '';
-        tplTopicsInput.value = (tplData && tplData.keyTopics) || '';
-        tplResourcesInput.value = (tplData && tplData.resources) || '';
-        tplResourceUrlInput.value = (tplData && tplData.resourceUrl) || '';
-        tplRemarksInput.value = (tplData && tplData.remarks) || '';
+        var f = itemFields(tplData || {});
+        tplPhaseInput.value = f.phase;
+        tplTopicsInput.value = f.title;
+        tplDurationInput.value = f.duration;
+        tplResourcesInput.value = f.attachments;
+        tplResourceUrlInput.value = f.documents;
+        tplRemarksInput.value = f.comments;
+        tplOptionalInput.checked = f.optional;
         tplItemForm.hidden = false;
         tplPhaseInput.focus();
       }
@@ -977,7 +1005,7 @@
         if (!list.length) {
           tplTableBody.appendChild(
             h('tr', {},
-              h('td', { colspan: '7', class: 'text-center py-6 text-base-content/60' },
+              h('td', { colspan: '8', class: 'text-center py-6 text-base-content/60' },
                 i18n.t('目前沒有任何範本階段，請點選右上角「新增範本階段」建立。', 'No template stages yet. Click "Add Template Stage" above.')
               )
             )
@@ -987,13 +1015,15 @@
         list.forEach(function (tpl) {
           var id = tpl._id;
           var wk = Number(tpl.week) || Number(tpl.order) || 1;
+          var f = itemFields(tpl);
           var tr = h('tr', { class: 'hover:bg-base-200/40' },
             h('td', { class: 'font-semibold align-top', text: String(wk) }),
-            h('td', { class: 'whitespace-pre-line align-top font-medium', text: tpl.timeline || ('Week ' + wk) }),
-            h('td', { class: 'align-top font-semibold', text: tpl.phase || '' }),
-            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80', text: tpl.keyTopics || '' }),
-            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80', text: tpl.resources || '-' }),
-            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80', text: tpl.remarks || '-' }),
+            h('td', { class: 'align-top font-medium', text: f.phase }),
+            h('td', { class: 'whitespace-pre-wrap align-top' }, f.title, f.optional ? h('span', { class: 'badge badge-ghost badge-xs ml-1', text: 'Optional' }) : null),
+            h('td', { class: 'align-top', text: f.duration || '-' }),
+            h('td', { class: 'align-top break-all' }, docsNode(f.documents)),
+            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80', text: f.attachments || '-' }),
+            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80', text: f.comments || '-' }),
             h('td', { class: 'align-top text-center' },
               h('div', { class: 'flex items-center justify-center gap-1' },
                 h('button', {
@@ -1054,11 +1084,14 @@
         taskStartDateInput.value = (taskData && taskData.startDate) ? taskData.startDate : autoRange.startDate;
         taskEndDateInput.value = (taskData && taskData.endDate) ? taskData.endDate : autoRange.endDate;
         taskStatusInput.value = (taskData && TASK_STATUS_META[taskData.status] ? taskData.status : 'pending');
-        taskTitleInput.value = (taskData && (taskData.phase || taskData.title)) || '';
-        taskTopicsInput.value = (taskData && (taskData.keyTopics || taskData.traineeNote)) || '';
-        taskResourceTextInput.value = (taskData && taskData.resources) || '';
-        taskResourceInput.value = (taskData && taskData.resourceUrl) || '';
-        taskNoteInput.value = (taskData && taskData.remarks) || '';
+        var f = itemFields(taskData || {});
+        taskTitleInput.value = f.phase;
+        taskTopicsInput.value = f.title;
+        taskDurationInput.value = f.duration;
+        taskResourceTextInput.value = f.attachments;
+        taskResourceInput.value = f.documents;
+        taskNoteInput.value = f.comments;
+        taskOptionalInput.checked = f.optional;
         taskModal.showModal();
       }
 
@@ -1163,13 +1196,15 @@
                       return sync.save(COL_TEMPLATES, 'tpl_w' + (idx + 1) + '_' + sync.newId(), {
                         setName: setName,
                         order: idx + 1,
-                        week: idx + 1,
-                        timeline: 'Week ' + (idx + 1),
+                        week: s.week,
+                        timeline: 'Week ' + s.week,
                         phase: s.phase,
-                        keyTopics: s.keyTopics,
-                        resources: '',
-                        resourceUrl: '',
-                        remarks: '',
+                        title: s.title,
+                        duration: s.duration,
+                        documents: s.documents,
+                        attachments: s.attachments,
+                        comments: s.comments,
+                        optional: s.optional,
                         defaultStatus: 'pending',
                         updatedAt: now
                       });
@@ -1198,7 +1233,8 @@
           var timeline = tplTimelineInput.value.trim().slice(0, 120);
           var defaultStatus = tplStatusInput.value || 'pending';
           var phase = tplPhaseInput.value.trim().slice(0, 200);
-          var keyTopics = tplTopicsInput.value.trim().slice(0, 8000);
+          var keyTopics = tplTopicsInput.value.trim().slice(0, 2000);
+          var duration = tplDurationInput.value.trim().slice(0, 60);
           var resources = tplResourcesInput.value.trim().slice(0, 500);
           var resourceUrl = tplResourceUrlInput.value.trim().slice(0, 500);
           var remarks = tplRemarksInput.value.trim().slice(0, 2000);
@@ -1207,14 +1243,17 @@
           var id = editingTplId || ('tpl_' + sync.newId());
           var payload = {
             setName: selectedTplSet,
-            order: wk,
+            order: editingTplId && templatesMap[editingTplId] && templatesMap[editingTplId].order ? templatesMap[editingTplId].order : Date.now(),
             week: wk,
             timeline: timeline,
             phase: phase,
-            keyTopics: keyTopics,
-            resources: resources,
-            resourceUrl: resourceUrl,
-            remarks: remarks,
+            title: keyTopics,
+            keyTopics: '',
+            duration: duration,
+            documents: resourceUrl,
+            attachments: resources,
+            comments: remarks,
+            optional: tplOptionalInput.checked,
             defaultStatus: defaultStatus,
             updatedAt: Date.now()
           };
@@ -1243,16 +1282,19 @@
                 var saveOps = currentTasks.map(function (item, idx) {
                   var t = item.data;
                   var wk = Number(t.week) || (idx + 1);
+                  var f = itemFields(t);
                   return sync.save(COL_TEMPLATES, 'tpl_w' + (idx + 1) + '_' + sync.newId(), {
                     setName: selectedTplSet,
-                    order: wk,
+                    order: idx + 1,
                     week: wk,
                     timeline: t.timeline || ('Week ' + wk),
-                    phase: t.phase || t.title || '',
-                    keyTopics: t.keyTopics || t.traineeNote || '',
-                    resources: t.resources || '',
-                    resourceUrl: t.resourceUrl || '',
-                    remarks: t.remarks || '',
+                    phase: f.phase || t.title || '',
+                    title: f.title,
+                    duration: f.duration,
+                    documents: f.documents,
+                    attachments: f.attachments,
+                    comments: f.comments,
+                    optional: f.optional,
                     defaultStatus: t.status === 'final_eval' ? 'final_eval' : 'pending',
                     updatedAt: Date.now()
                   });
@@ -1427,7 +1469,8 @@
           }
           var st = taskStatusInput.value || 'pending';
           var phase = taskTitleInput.value.trim().slice(0, 200);
-          var topics = taskTopicsInput.value.trim().slice(0, 8000);
+          var topics = taskTopicsInput.value.trim().slice(0, 2000);
+          var duration = taskDurationInput.value.trim().slice(0, 60);
           var resources = taskResourceTextInput.value.trim().slice(0, 500);
           var resUrl = taskResourceInput.value.trim().slice(0, 500);
           var remarks = taskNoteInput.value.trim().slice(0, 2000);
@@ -1441,11 +1484,13 @@
             startDate: startDate,
             endDate: endDate,
             phase: phase,
-            title: phase,
-            keyTopics: topics,
-            resources: resources,
-            resourceUrl: resUrl,
-            remarks: remarks,
+            title: topics,
+            keyTopics: '',
+            duration: duration,
+            documents: resUrl,
+            attachments: resources,
+            comments: remarks,
+            optional: taskOptionalInput.checked,
             status: st,
             updatedAt: Date.now(),
             updatedBy: (ctx.session && ctx.session.name) || ''

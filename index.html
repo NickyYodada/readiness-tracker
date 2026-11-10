@@ -161,11 +161,12 @@
               <table class="table table-sm w-full align-top">
                 <thead class="bg-base-200/70 text-xs">
                   <tr>
-                    <th class="w-48">Timeline / Date Range</th>
-                    <th class="w-40">Phase / Domain</th>
-                    <th class="min-w-64">Key Topics &amp; Hands-on Tasks</th>
-                    <th class="w-36">Resources &amp; Format</th>
-                    <th class="w-44">Remarks / Milestones</th>
+                    <th class="w-52">Category</th>
+                    <th class="min-w-56">Title</th>
+                    <th class="w-24">Duration</th>
+                    <th class="w-40">Documents</th>
+                    <th class="w-28">Attachments</th>
+                    <th class="w-44">Comments</th>
                     <th class="w-36 text-center">Status &amp; Actions</th>
                   </tr>
                 </thead>
@@ -310,26 +311,34 @@
               </label>
             </div>
             <label class="form-control w-full">
-              <div class="label py-1"><span class="label-text text-sm">Phase / Domain *</span></div>
-              <input id="taskTitleInput" type="text" class="input input-bordered input-sm w-full" required placeholder="例如：Phase 1 Fundamentals" data-i18n-placeholder-zh="例如：Phase 1 Fundamentals" data-i18n-placeholder-en="e.g., Phase 1 Fundamentals">
+              <div class="label py-1"><span class="label-text text-sm">Category *</span></div>
+              <input id="taskTitleInput" type="text" class="input input-bordered input-sm w-full" required>
             </label>
             <label class="form-control w-full">
-              <div class="label py-1"><span class="label-text text-sm">Key Topics &amp; Hands-on Tasks *</span></div>
-              <textarea id="taskTopicsInput" class="textarea textarea-bordered textarea-sm w-full" rows="5" required placeholder="• 主題一：說明&#10;• 主題二：說明" data-i18n-placeholder-zh="• 主題一：說明&#10;• 主題二：說明" data-i18n-placeholder-en="• Topic 1: details&#10;• Topic 2: details"></textarea>
+              <div class="label py-1"><span class="label-text text-sm">Title *</span></div>
+              <textarea id="taskTopicsInput" class="textarea textarea-bordered textarea-sm w-full" rows="2" required></textarea>
             </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label class="form-control w-full">
-                <div class="label py-1"><span class="label-text text-sm">Resources &amp; Format</span></div>
-                <input id="taskResourceTextInput" type="text" class="input input-bordered input-sm w-full" placeholder="例如：Microsoft Learn Docs, Support Wiki" data-i18n-placeholder-zh="例如：Microsoft Learn Docs, Support Wiki" data-i18n-placeholder-en="e.g., Microsoft Learn Docs, Support Wiki">
+                <div class="label py-1"><span class="label-text text-sm">Duration</span></div>
+                <input id="taskDurationInput" type="text" class="input input-bordered input-sm w-full" placeholder="1 day / 30 mins">
               </label>
               <label class="form-control w-full">
-                <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="參考連結 URL（選填）" data-i18n-en="Reference URL (Optional)">參考連結 URL（選填）</span></div>
-                <input id="taskResourceInput" type="url" class="input input-bordered input-sm w-full" placeholder="https://...">
+                <div class="label py-1"><span class="label-text text-sm">Documents</span></div>
+                <input id="taskResourceInput" type="text" class="input input-bordered input-sm w-full" placeholder="https://...">
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-sm">Attachments</span></div>
+                <input id="taskResourceTextInput" type="text" class="input input-bordered input-sm w-full">
               </label>
             </div>
             <label class="form-control w-full">
-              <div class="label py-1"><span class="label-text text-sm" data-i18n-zh="Remarks / Milestones（重要里程碑與學員筆記）" data-i18n-en="Remarks / Milestones">Remarks / Milestones（重要里程碑與學員筆記）</span></div>
-              <textarea id="taskNoteInput" class="textarea textarea-bordered textarea-sm w-full" rows="2" placeholder="例如：Quick Overview / Lab Critical…" data-i18n-placeholder-zh="例如：Quick Overview / Lab Critical…" data-i18n-placeholder-en="e.g., Quick Overview / Lab Critical…"></textarea>
+              <div class="label py-1"><span class="label-text text-sm">Comments</span></div>
+              <textarea id="taskNoteInput" class="textarea textarea-bordered textarea-sm w-full" rows="2"></textarea>
+            </label>
+            <label class="label cursor-pointer justify-start gap-2">
+              <input id="taskOptionalInput" type="checkbox" class="checkbox checkbox-sm">
+              <span class="label-text text-sm" data-i18n-zh="選修（非必修）" data-i18n-en="Optional (not mandatory)">選修（非必修）</span>
             </label>
             <div class="modal-action">
               <button id="taskModalCancel" type="button" class="btn btn-sm btn-ghost" data-i18n-zh="取消" data-i18n-en="Cancel">取消</button>
@@ -381,11 +390,12 @@
               <thead class="bg-base-200/70">
                 <tr>
                   <th class="w-14">#</th>
-                  <th class="w-28">Timeline</th>
-                  <th class="w-40">Phase / Domain</th>
-                  <th class="min-w-56">Key Topics</th>
-                  <th class="w-32">Resources</th>
-                  <th class="w-32">Remarks</th>
+                  <th class="w-28">Category</th>
+                  <th class="min-w-48">Title</th>
+                  <th class="w-24">Duration</th>
+                  <th class="w-32">Documents</th>
+                  <th class="w-24">Attachments</th>
+                  <th class="w-32">Comments</th>
                   <th class="w-24 text-center" data-i18n-zh="操作" data-i18n-en="Actions">操作</th>
                 </tr>
               </thead>
@@ -415,26 +425,34 @@
               </label>
             </div>
             <label class="form-control w-full">
-              <div class="label py-0.5"><span class="label-text text-xs">Phase / Domain *</span></div>
+              <div class="label py-0.5"><span class="label-text text-xs">Category *</span></div>
               <input id="tplPhaseInput" type="text" class="input input-bordered input-xs w-full" required>
             </label>
             <label class="form-control w-full">
-              <div class="label py-0.5"><span class="label-text text-xs">Key Topics &amp; Hands-on Tasks *</span></div>
-              <textarea id="tplTopicsInput" class="textarea textarea-bordered textarea-xs w-full" rows="4" required></textarea>
+              <div class="label py-0.5"><span class="label-text text-xs">Title *</span></div>
+              <textarea id="tplTopicsInput" class="textarea textarea-bordered textarea-xs w-full" rows="2" required></textarea>
             </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <label class="form-control w-full">
-                <div class="label py-0.5"><span class="label-text text-xs">Resources &amp; Format</span></div>
-                <input id="tplResourcesInput" type="text" class="input input-bordered input-xs w-full">
+                <div class="label py-0.5"><span class="label-text text-xs">Duration</span></div>
+                <input id="tplDurationInput" type="text" class="input input-bordered input-xs w-full">
               </label>
               <label class="form-control w-full">
-                <div class="label py-0.5"><span class="label-text text-xs" data-i18n-zh="參考連結 URL（選填）" data-i18n-en="Reference URL (Optional)">參考連結 URL（選填）</span></div>
-                <input id="tplResourceUrlInput" type="url" class="input input-bordered input-xs w-full" placeholder="https://...">
+                <div class="label py-0.5"><span class="label-text text-xs">Documents</span></div>
+                <input id="tplResourceUrlInput" type="text" class="input input-bordered input-xs w-full" placeholder="https://...">
+              </label>
+              <label class="form-control w-full">
+                <div class="label py-0.5"><span class="label-text text-xs">Attachments</span></div>
+                <input id="tplResourcesInput" type="text" class="input input-bordered input-xs w-full">
               </label>
             </div>
             <label class="form-control w-full">
-              <div class="label py-0.5"><span class="label-text text-xs">Remarks / Milestones</span></div>
+              <div class="label py-0.5"><span class="label-text text-xs">Comments</span></div>
               <textarea id="tplRemarksInput" class="textarea textarea-bordered textarea-xs w-full" rows="2"></textarea>
+            </label>
+            <label class="label cursor-pointer justify-start gap-2">
+              <input id="tplOptionalInput" type="checkbox" class="checkbox checkbox-xs">
+              <span class="label-text text-xs" data-i18n-zh="選修（非必修）" data-i18n-en="Optional (not mandatory)">選修（非必修）</span>
             </label>
             <div class="flex justify-end gap-2">
               <button id="tplFormCancelBtn" type="button" class="btn btn-xs btn-ghost" data-i18n-zh="取消編輯" data-i18n-en="Cancel">取消編輯</button>
