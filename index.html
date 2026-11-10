@@ -66,13 +66,13 @@
       <div class="card bg-base-100 shadow-sm border border-base-300">
         <div class="card-body p-4 space-y-4">
           <div class="flex items-center justify-between gap-3 flex-wrap">
-            <div class="flex items-center gap-2 flex-wrap flex-1 min-w-60">
+            <div class="flex items-center gap-2 flex-wrap min-w-60">
               <label for="hireSelect" class="text-sm font-medium whitespace-nowrap">
                 <i class="fa-solid fa-user-graduate text-primary mr-1" aria-hidden="true"></i><span data-i18n-zh="選擇學員：" data-i18n-en="Learner:">選擇學員：</span>
               </label>
               <select id="hireSelect" class="select select-sm select-bordered flex-1 max-w-xs"></select>
             </div>
-            <div id="hireActions" class="flex items-center gap-1 flex-wrap" hidden>
+            <div id="hireActions" class="flex items-center gap-1 flex-wrap sm:flex-nowrap" hidden>
               <select id="applyTplSelect" class="select select-xs select-bordered max-w-40" aria-label="Template" data-i18n-title-zh="選擇課綱範本" data-i18n-title-en="Choose curriculum template"></select>
               <button id="applyTemplateBtn" type="button" class="btn btn-xs btn-soft btn-primary">
                 <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span data-i18n-zh="套用預設課綱範本" data-i18n-en="Apply Default Curriculum">套用預設課綱範本</span>
