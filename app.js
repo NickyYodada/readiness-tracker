@@ -10,6 +10,8 @@
   var COL_REVIEWS = 'reviews';
   var COL_TEMPLATES = 'templates';
   var UI_PREF_HIRE = 'mws:readiness-tracker-app:ui:selectedHire';
+  var UI_PREF_TPLSET = 'mws:readiness-tracker-app:ui:selectedTplSet';
+  var DEFAULT_TPL_SET = 'Teams';
 
   var EVAL_META = {
     on_track: { labelZh: '符合預期 (On Track)', labelEn: 'On Track', badge: 'badge-success', icon: 'fa-circle-check' },
@@ -127,7 +129,11 @@
       var tasksMap = {};
       var reviewsMap = {};
       var templatesMap = {};
-
+      var localTplSets = [];
+      var selectedTplSet = DEFAULT_TPL_SET;
+      try {
+        selectedTplSet = localStorage.getItem(UI_PREF_TPLSET) || DEFAULT_TPL_SET;
+      } catch (_) {}
       var selectedHireId = '';
       try {
         selectedHireId = localStorage.getItem(UI_PREF_HIRE) || '';
@@ -229,7 +235,14 @@
       var tplFormCancelBtn = $('tplFormCancelBtn');
       var tplListCloseBtn = $('tplListCloseBtn');
       var editingTplId = null;
-
+      var applyTplSelect = $('applyTplSelect');
+      var hireTplSelect = $('hireTplSelect');
+      var tplSetSelect = $('tplSetSelect');
+      var tplNewSetInput = $('tplNewSetInput');
+      var tplNewSetBtn = $('tplNewSetBtn');
+      var tplImportCsvBtn = $('tplImportCsvBtn');
+      var tplImportCsvInput = $('tplImportCsvInput');
+      var tplDeleteSetBtn = $('tplDeleteSetBtn');
       var confirmModal = $('confirmModal');
       var confirmModalMsg = $('confirmModalMsg');
       var confirmPromptWrap = $('confirmPromptWrap');
@@ -296,10 +309,94 @@
         });
       }
 
+      function parseCsv(text) {
+        var rows = [], row = [], cur = '', inQ = false;
+        text = text.replace(/^\uFEFF/, '');
+        for (var i = 0; i < text.length; i++) {
+          var ch = text[i];
+          if (inQ) {
+            if (ch === '"') {
+              if (text[i + 1] === '"') { cur += '"'; i++; } else inQ = false;
+            } else cur += ch;
+          } else if (ch === '"') inQ = true;
+          else if (ch === ',') { row.push(cur); cur = ''; }
+          else if (ch === '\n' || ch === '\r') {
+            if (ch === '\r' && text[i + 1] === '\n') i++;
+            row.push(cur); cur = '';
+            rows.push(row); row = [];
+          } else cur += ch;
+        }
+        if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+        return rows;
+      }
+
+      // 每個 Category 對應一個範本階段（一週），Title 條列成 Key Topics
+      function csvToTemplateStages(text) {
+        var rows = parseCsv(text);
+        if (!rows.length) return [];
+        var head = rows[0].map(function (c) { return c.trim(); });
+        var iCat = head.indexOf('Category');
+        var iTitle = head.indexOf('Title');
+        if (iCat < 0 || iTitle < 0) return [];
+        var iDur = head.indexOf('Duration');
+        var iDoc = head.indexOf('Documents');
+        var iMan = head.indexOf('Mandatory');
+        var groups = {};
+        rows.slice(1).forEach(function (r) {
+          var cat = (r[iCat] || '').trim();
+          var title = (r[iTitle] || '').trim();
+          if (!cat || !title) return;
+          var line = '- ' + title;
+          var dur = iDur >= 0 ? (r[iDur] || '').trim() : '';
+          if (dur) line += ' (' + dur + ')';
+          if (iMan >= 0 && /^false$/i.test((r[iMan] || '').trim())) line += ' [Optional]';
+          var doc = iDoc >= 0 ? (r[iDoc] || '').replace(/\s+/g, ' ').trim() : '';
+          if (doc) line += ' ' + doc;
+          (groups[cat] = groups[cat] || []).push(line);
+        });
+        return Object.keys(groups).sort(function (a, b) {
+          return a.localeCompare(b, undefined, { numeric: true });
+        }).map(function (cat) {
+          return { phase: cat.slice(0, 200), keyTopics: groups[cat].join('\n').slice(0, 8000) };
+        });
+      }
+
+      function tplSetOf(t) {
+        return (t && t.setName) || DEFAULT_TPL_SET;
+      }
+
+      function getTemplateSetNames() {
+        var names = {};
+        Object.keys(templatesMap).forEach(function (k) {
+          if (templatesMap[k]) names[tplSetOf(templatesMap[k])] = true;
+        });
+        localTplSets.forEach(function (n) { names[n] = true; });
+        if (!Object.keys(names).length) names[DEFAULT_TPL_SET] = true;
+        return Object.keys(names).sort(function (a, b) { return a.localeCompare(b); });
+      }
+
+      function setSelectedTplSet(name) {
+        selectedTplSet = name;
+        try { localStorage.setItem(UI_PREF_TPLSET, name); } catch (_) {}
+        renderTplSetSelects();
+        renderTemplateModalList();
+      }
+
+      function renderTplSetSelects() {
+        var names = getTemplateSetNames();
+        if (names.indexOf(selectedTplSet) === -1) selectedTplSet = names[0];
+        [applyTplSelect, hireTplSelect, tplSetSelect].forEach(function (sel) {
+          if (!sel) return;
+          sel.textContent = '';
+          names.forEach(function (n) { sel.appendChild(h('option', { value: n, text: n })); });
+          sel.value = selectedTplSet;
+        });
+      }
+
       function getSortedTemplates() {
         return Object.keys(templatesMap).map(function (k) {
           var item = templatesMap[k];
-          return item ? Object.assign({ _id: k }, item) : null;
+          return item && tplSetOf(item) === selectedTplSet ? Object.assign({ _id: k }, item) : null;
         }).filter(Boolean).sort(function (a, b) {
           return (Number(a.order) || Number(a.week) || 0) - (Number(b.order) || Number(b.week) || 0);
         });
@@ -498,6 +595,7 @@
       }
 
       function renderAll() {
+        renderTplSetSelects();
         statusEl.textContent = getStatusLabel(curSyncStatus);
         var hireIds = getSortedHireIds();
         if (!selectedHireId || !hiresMap[selectedHireId]) {
@@ -1009,6 +1107,82 @@
           tplListModal.close();
         });
 
+        [applyTplSelect, hireTplSelect, tplSetSelect].forEach(function (sel) {
+          sel.addEventListener('change', function () { setSelectedTplSet(sel.value); });
+        });
+
+        tplNewSetBtn.addEventListener('click', function () {
+          var name = tplNewSetInput.value.trim().slice(0, 60);
+          if (!name) return;
+          var exists = getTemplateSetNames().filter(function (n) { return n.toLowerCase() === name.toLowerCase(); })[0];
+          if (!exists) localTplSets.push(name);
+          tplNewSetInput.value = '';
+          setSelectedTplSet(exists || name);
+        });
+
+        tplDeleteSetBtn.addEventListener('click', function () {
+          var setName = selectedTplSet;
+          var stages = getSortedTemplates();
+          askConfirm(
+            i18n.t('確定要刪除整套範本「' + setName + '」（' + stages.length + ' 個階段）嗎？', 'Delete the whole template "' + setName + '" (' + stages.length + ' stage(s))?'),
+            function () {
+              localTplSets = localTplSets.filter(function (n) { return n !== setName; });
+              run(Promise.all(stages.map(function (t) { return sync.remove(COL_TEMPLATES, t._id); })));
+            },
+            { danger: true }
+          );
+        });
+
+        tplImportCsvBtn.addEventListener('click', function () {
+          tplImportCsvInput.click();
+        });
+
+        tplImportCsvInput.addEventListener('change', function () {
+          var file = tplImportCsvInput.files && tplImportCsvInput.files[0];
+          tplImportCsvInput.value = '';
+          if (!file) return;
+          var reader = new FileReader();
+          reader.onload = function () {
+            var stages = csvToTemplateStages(String(reader.result || ''));
+            if (!stages.length) {
+              showErr(new Error(i18n.t('CSV 內容無法辨識（需包含 Category、Title 欄位）', 'Unrecognized CSV (needs Category and Title columns)')));
+              return;
+            }
+            var setName = selectedTplSet;
+            var old = getSortedTemplates();
+            askConfirm(
+              i18n.t(
+                '將匯入 ' + stages.length + ' 個階段到範本「' + setName + '」' + (old.length ? '，並覆蓋該範本現有的 ' + old.length + ' 個階段' : '') + '。確定嗎？',
+                'Import ' + stages.length + ' stage(s) into template "' + setName + '"' + (old.length ? ', replacing its ' + old.length + ' existing stage(s)' : '') + '. Continue?'
+              ),
+              function () {
+                var now = Date.now();
+                run(
+                  Promise.all(old.map(function (t) { return sync.remove(COL_TEMPLATES, t._id); })).then(function () {
+                    return Promise.all(stages.map(function (s, idx) {
+                      return sync.save(COL_TEMPLATES, 'tpl_w' + (idx + 1) + '_' + sync.newId(), {
+                        setName: setName,
+                        order: idx + 1,
+                        week: idx + 1,
+                        timeline: 'Week ' + (idx + 1),
+                        phase: s.phase,
+                        keyTopics: s.keyTopics,
+                        resources: '',
+                        resourceUrl: '',
+                        remarks: '',
+                        defaultStatus: 'pending',
+                        updatedAt: now
+                      });
+                    }));
+                  })
+                );
+              },
+              { okLabel: i18n.t('匯入', 'Import') }
+            );
+          };
+          reader.readAsText(file, 'utf-8');
+        });
+
         addTplItemBtn.addEventListener('click', function () {
           openTplForm(null, null);
         });
@@ -1024,7 +1198,7 @@
           var timeline = tplTimelineInput.value.trim().slice(0, 120);
           var defaultStatus = tplStatusInput.value || 'pending';
           var phase = tplPhaseInput.value.trim().slice(0, 200);
-          var keyTopics = tplTopicsInput.value.trim().slice(0, 4000);
+          var keyTopics = tplTopicsInput.value.trim().slice(0, 8000);
           var resources = tplResourcesInput.value.trim().slice(0, 500);
           var resourceUrl = tplResourceUrlInput.value.trim().slice(0, 500);
           var remarks = tplRemarksInput.value.trim().slice(0, 2000);
@@ -1032,6 +1206,7 @@
 
           var id = editingTplId || ('tpl_' + sync.newId());
           var payload = {
+            setName: selectedTplSet,
             order: wk,
             week: wk,
             timeline: timeline,
@@ -1060,8 +1235,8 @@
             'Overwrite the default curriculum template with the ' + currentTasks.length + ' stages from the current learner?'
           );
           askConfirm(confirmMsg, function () {
-            var removeOps = Object.keys(templatesMap).map(function (k) {
-              return sync.remove(COL_TEMPLATES, k);
+            var removeOps = getSortedTemplates().map(function (t) {
+              return sync.remove(COL_TEMPLATES, t._id);
             });
             run(
               Promise.all(removeOps).then(function () {
@@ -1069,6 +1244,7 @@
                   var t = item.data;
                   var wk = Number(t.week) || (idx + 1);
                   return sync.save(COL_TEMPLATES, 'tpl_w' + (idx + 1) + '_' + sync.newId(), {
+                    setName: selectedTplSet,
                     order: wk,
                     week: wk,
                     timeline: t.timeline || ('Week ' + wk),
@@ -1251,7 +1427,7 @@
           }
           var st = taskStatusInput.value || 'pending';
           var phase = taskTitleInput.value.trim().slice(0, 200);
-          var topics = taskTopicsInput.value.trim().slice(0, 4000);
+          var topics = taskTopicsInput.value.trim().slice(0, 8000);
           var resources = taskResourceTextInput.value.trim().slice(0, 500);
           var resUrl = taskResourceInput.value.trim().slice(0, 500);
           var remarks = taskNoteInput.value.trim().slice(0, 2000);
@@ -1373,6 +1549,7 @@
       var subTemplates = sync.subscribe(COL_TEMPLATES, {
         onChange: function (map) {
           templatesMap = map || {};
+          renderTplSetSelects();
           renderTemplateModalList();
           renderAll();
         },

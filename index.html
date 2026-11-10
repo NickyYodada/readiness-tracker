@@ -73,6 +73,7 @@
               <select id="hireSelect" class="select select-sm select-bordered flex-1 max-w-xs"></select>
             </div>
             <div id="hireActions" class="flex items-center gap-1 flex-wrap" hidden>
+              <select id="applyTplSelect" class="select select-xs select-bordered max-w-40" aria-label="Template" data-i18n-title-zh="選擇課綱範本" data-i18n-title-en="Choose curriculum template"></select>
               <button id="applyTemplateBtn" type="button" class="btn btn-xs btn-soft btn-primary">
                 <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span data-i18n-zh="套用預設課綱範本" data-i18n-en="Apply Default Curriculum">套用預設課綱範本</span>
               </button>
@@ -260,10 +261,13 @@
                 <input id="hireDateInput" type="date" class="input input-bordered input-sm w-full">
               </label>
             </div>
-            <label id="hireSeedWrap" class="label cursor-pointer justify-start gap-2 pt-2">
-              <input id="hireSeedCheckbox" type="checkbox" class="checkbox checkbox-sm checkbox-primary" checked>
-              <span class="label-text text-sm" data-i18n-zh="自動帶入預設讀書計畫課綱範本（5 個階段）" data-i18n-en="Auto-populate default curriculum template (5 stages)">自動帶入預設讀書計畫課綱範本（5 個階段）</span>
-            </label>
+            <div id="hireSeedWrap" class="flex items-center gap-2 flex-wrap pt-2">
+              <label class="label cursor-pointer justify-start gap-2">
+                <input id="hireSeedCheckbox" type="checkbox" class="checkbox checkbox-sm checkbox-primary" checked>
+                <span class="label-text text-sm" data-i18n-zh="自動帶入課綱範本：" data-i18n-en="Auto-populate curriculum template:">自動帶入課綱範本：</span>
+              </label>
+              <select id="hireTplSelect" class="select select-sm select-bordered max-w-48" aria-label="Template"></select>
+            </div>
             <div class="modal-action">
               <button id="hireModalCancel" type="button" class="btn btn-sm btn-ghost" data-i18n-zh="取消" data-i18n-en="Cancel">取消</button>
               <button type="submit" class="btn btn-sm btn-primary" data-i18n-zh="儲存" data-i18n-en="Save">儲存</button>
@@ -354,6 +358,22 @@
                 <i class="fa-solid fa-plus" aria-hidden="true"></i><span data-i18n-zh="新增範本階段" data-i18n-en="Add Template Stage">新增範本階段</span>
               </button>
             </div>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap">
+            <label for="tplSetSelect" class="text-sm font-medium" data-i18n-zh="範本：" data-i18n-en="Template:">範本：</label>
+            <select id="tplSetSelect" class="select select-xs select-bordered max-w-48"></select>
+            <input id="tplNewSetInput" type="text" maxlength="60" class="input input-bordered input-xs w-36" data-i18n-placeholder-zh="新範本名稱" data-i18n-placeholder-en="New template name" placeholder="新範本名稱">
+            <button id="tplNewSetBtn" type="button" class="btn btn-xs btn-soft">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i><span data-i18n-zh="新增範本" data-i18n-en="New Template">新增範本</span>
+            </button>
+            <button id="tplImportCsvBtn" type="button" class="btn btn-xs btn-soft">
+              <i class="fa-solid fa-file-csv" aria-hidden="true"></i><span data-i18n-zh="匯入 CSV" data-i18n-en="Import CSV">匯入 CSV</span>
+            </button>
+            <input id="tplImportCsvInput" type="file" accept=".csv,text/csv" hidden>
+            <button id="tplDeleteSetBtn" type="button" class="btn btn-xs btn-ghost text-error">
+              <i class="fa-regular fa-trash-can" aria-hidden="true"></i><span data-i18n-zh="刪除此範本" data-i18n-en="Delete Template">刪除此範本</span>
+            </button>
           </div>
 
           <div class="overflow-x-auto rounded-box border border-base-200 max-h-96">
