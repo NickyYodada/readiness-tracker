@@ -1007,7 +1007,7 @@
         if (!list.length) {
           tplTableBody.appendChild(
             h('tr', {},
-              h('td', { colspan: '8', class: 'text-center py-6 text-base-content/60' },
+              h('td', { colspan: '6', class: 'text-center py-6 text-base-content/60' },
                 i18n.t('目前沒有任何範本階段，請點選右上角「新增範本階段」建立。', 'No template stages yet. Click "Add Template Stage" above.')
               )
             )
