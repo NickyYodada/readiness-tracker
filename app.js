@@ -855,7 +855,7 @@
 
           // 2. Title（選修加註 Optional 標籤）
           var phaseText = f.title || f.phase || i18n.t('未命名階段', 'Untitled Stage');
-          var tdPhase = h('td', { class: 'text-sm align-top whitespace-pre-wrap' }, phaseText);
+          var tdPhase = h('td', { class: 'text-sm align-top whitespace-pre-wrap break-words' }, phaseText);
           if (f.optional) {
             tdPhase.appendChild(h('span', { class: 'badge badge-ghost badge-xs ml-1', text: 'Optional' }));
           }
@@ -866,8 +866,10 @@
           // 4. Documents
           var tdResources = h('td', { class: 'text-xs align-top break-all' }, docsNode(f.documents));
           // 5. Attachments + 6. Comments
-          var tdAttach = h('td', { class: 'text-xs align-top whitespace-pre-wrap' }, f.attachments || '-');
-          var tdRemarks = h('td', { class: 'text-xs whitespace-pre-wrap align-top text-base-content/80' }, f.comments || '-');
+          var tdAttach = h('td', { class: 'text-xs align-top break-all' },
+            h('div', { class: 'line-clamp-2', title: f.attachments || '' }, f.attachments || '-'));
+          var tdRemarks = h('td', { class: 'text-xs align-top text-base-content/80' },
+            h('div', { class: 'line-clamp-2 break-all', title: f.comments || '' }, f.comments || '-'));
 
           // 7. Status + 操作
           var tdStatus = h('td', { class: 'align-top text-center space-y-1.5' });
