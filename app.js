@@ -881,28 +881,13 @@
             h('span', { class: 'text-sm font-semibold', text: (f.phase || i18n.t('未命名階段', 'Untitled Stage')).replace(/^\d+\.\s*/, '') })
           );
           var wkPriority = isPriorityWeek(wk);
-          if (firstOfWeek && (wkPriority || canManage)) {
-            var starTitle = wkPriority ? i18n.t('優先學習（點擊取消）', 'Priority (click to unset)') : i18n.t('設為優先學習', 'Mark as priority');
-            var starAttrs = {
-              type: 'button',
-              class: 'btn btn-ghost btn-xs px-1 ' + (wkPriority ? 'text-warning' : 'text-base-content/30'),
-              title: starTitle
-            };
-            if (canManage) {
-              starAttrs.onclick = function () {
-                run(Promise.all(weekTemplateIds(wk).map(function (k) { return sync.save(COL_TEMPLATES, k, { priority: !wkPriority, updatedAt: Date.now() }); })));
-              };
-            } else {
-              starAttrs.disabled = true;
-            }
-            groupBar.appendChild(h('button', starAttrs,
-              h('i', { class: (wkPriority ? 'fa-solid' : 'fa-regular') + ' fa-star', 'aria-hidden': 'true' }),
-              wkPriority ? h('span', { class: 'ml-1 text-xs font-semibold', text: i18n.t('優先', 'Priority') }) : null
+          if (firstOfWeek && wkPriority) {
+            groupBar.appendChild(h('span', { class: 'inline-flex items-center gap-1 text-warning text-xs font-semibold', title: i18n.t('優先學習', 'Priority') },
+              h('i', { class: 'fa-solid fa-star', 'aria-hidden': 'true' }),
+              i18n.t('優先', 'Priority')
             ));
-            if (wkPriority) {
-              tdTimeline.classList.add('border-l-4', 'border-warning');
-              tdTimeline.style.backgroundColor = 'color-mix(in oklab, var(--color-warning) 14%, transparent)';
-            }
+            tdTimeline.classList.add('border-l-4', 'border-warning');
+            tdTimeline.style.backgroundColor = 'color-mix(in oklab, var(--color-warning) 14%, transparent)';
           }
           if (firstOfWeek) {
             var wkDone =  weekTaskIds.filter(function (tid) {
@@ -1210,11 +1195,6 @@
             ));
           }
           var tr = h('tr', { class: 'hover:bg-base-200/40' },
-            h('td', { class: 'whitespace-pre-wrap align-top' }, f.title, f.optional ? h('span', { class: 'badge badge-ghost badge-xs ml-1', text: 'Optional' }) : null),
-            h('td', { class: 'align-top', text: f.duration || '-' }),
-            h('td', { class: 'align-top break-all' }, docsNode(f.documents)),
-            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80' }, attachNode(f.attachments)),
-            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80', text: f.comments || '-' }),
             h('td', { class: 'align-top text-center' },
               h('div', { class: 'flex items-center justify-center gap-1' },
                 h('button', {
@@ -1236,7 +1216,12 @@
                   }
                 }, h('i', { class: 'fa-regular fa-trash-can', 'aria-hidden': 'true' }))
               )
-            )
+            ),
+            h('td', { class: 'whitespace-pre-wrap align-top' }, f.title, f.optional ? h('span', { class: 'badge badge-ghost badge-xs ml-1', text: 'Optional' }) : null),
+            h('td', { class: 'align-top', text: f.duration || '-' }),
+            h('td', { class: 'align-top break-all' }, docsNode(f.documents)),
+            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80' }, attachNode(f.attachments)),
+            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80', text: f.comments || '-' })
           );
           tplTableBody.appendChild(tr);
         });
