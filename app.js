@@ -1243,9 +1243,14 @@
           var name = tplNewSetInput.value.trim().slice(0, 60);
           if (!name) return;
           var exists = getTemplateSetNames().filter(function (n) { return n.toLowerCase() === name.toLowerCase(); })[0];
-          if (!exists) localTplSets.push(name);
+          if (exists) {
+            showErr(new Error(i18n.t('已有同名範本「' + exists + '」，請換一個名稱。', 'A template named "' + exists + '" already exists. Choose another name.')));
+            tplNewSetInput.focus();
+            return;
+          }
+          localTplSets.push(name);
           tplNewSetInput.value = '';
-          setSelectedTplSet(exists || name);
+          setSelectedTplSet(name);
         });
 
         tplDeleteSetBtn.addEventListener('click', function () {
