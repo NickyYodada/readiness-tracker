@@ -478,12 +478,18 @@
             <span data-i18n-zh="全員進度" data-i18n-en="All Progress">全員進度</span>
           </h3>
           <div class="overflow-x-auto">
-            <table class="table table-sm">
+            <table id="overviewTable" class="table table-sm">
               <thead><tr id="overviewHead"></tr></thead>
               <tbody id="overviewBody"></tbody>
             </table>
           </div>
           <div class="modal-action">
+            <button id="overviewCopyBtn" type="button" class="btn btn-sm btn-soft btn-primary">
+              <i class="fa-regular fa-copy" aria-hidden="true"></i><span data-i18n-zh="複製表格" data-i18n-en="Copy Table">複製表格</span>
+            </button>
+            <button id="overviewCsvBtn" type="button" class="btn btn-sm btn-soft btn-primary">
+              <i class="fa-solid fa-file-csv" aria-hidden="true"></i><span data-i18n-zh="下載 CSV" data-i18n-en="Download CSV">下載 CSV</span>
+            </button>
             <form method="dialog"><button class="btn btn-sm" data-i18n-zh="關閉" data-i18n-en="Close">關閉</button></form>
           </div>
         </div>

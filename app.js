@@ -165,6 +165,9 @@
       var overviewModal = $('overviewModal');
       var overviewBody = $('overviewBody');
       var overviewHead = $('overviewHead');
+      var overviewTable = $('overviewTable');
+      var overviewCopyBtn = $('overviewCopyBtn');
+      var overviewCsvBtn = $('overviewCsvBtn');
       var applyTemplateBtn = $('applyTemplateBtn');
       var manageTemplateBtn = $('manageTemplateBtn');
       var editHireBtn = $('editHireBtn');
@@ -1214,6 +1217,49 @@
         taskOptionalInput.checked = f.optional;
         taskModal.showModal();
       }
+
+      function overviewMatrix() {
+        var m = [];
+        overviewTable.querySelectorAll('tr').forEach(function (tr) {
+          m.push(Array.prototype.map.call(tr.children, function (c) {
+            var p = c.querySelector('progress');
+            return p ? p.value + '%' : c.textContent.trim();
+          }));
+        });
+        return m;
+      }
+
+      function flashBtn(btn, msg) {
+        var sp = btn.querySelector('span');
+        var old = sp.textContent;
+        sp.textContent = msg;
+        setTimeout(function () { sp.textContent = old; }, 1500);
+      }
+
+      overviewCopyBtn.addEventListener('click', function () {
+        var tsv = overviewMatrix().map(function (r) { return r.join('\t'); }).join('\n');
+        var html = overviewTable.outerHTML;
+        var done = function () { flashBtn(overviewCopyBtn, i18n.t('已複製', 'Copied')); };
+        var fallback = function () { navigator.clipboard.writeText(tsv).then(done, function (e) { showErr(e); }); };
+        if (window.ClipboardItem && navigator.clipboard.write) {
+          navigator.clipboard.write([new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([tsv], { type: 'text/plain' })
+          })]).then(done, fallback);
+        } else fallback();
+      });
+
+      overviewCsvBtn.addEventListener('click', function () {
+        var csv = overviewMatrix().map(function (r) {
+          return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(',');
+        }).join('\r\n');
+        var url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+        var a = h('a', { href: url, download: 'readiness-progress-' + new Date().toISOString().slice(0, 10) + '.csv' });
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      });
 
       overviewBtn.addEventListener('click', function () {
         overviewBody.textContent = '';
