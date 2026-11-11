@@ -696,10 +696,19 @@
         learnerModeWrap.hidden = !canWrite || isEditorRole;
         learnerModeToggle.checked = learnerMode;
 
+        var lockedToId = '';
+        if (isEditorRole) {
+          var meName = ((ctx.session && ctx.session.name) || '').trim().toLowerCase();
+          lockedToId = (meName && hireIds.filter(function (id) {
+            return String((hiresMap[id] && hiresMap[id].name) || '').trim().toLowerCase() === meName;
+          })[0]) || '';
+        }
         hireIds.forEach(function (id) {
           var hr = hiresMap[id];
-          var label = (hr.name || i18n.t('未命名', 'Unnamed')) + (hr.mentor ? ' (Mentor: ' + hr.mentor + ')' : '');
+          var locked = !!lockedToId && id !== lockedToId;
+          var label = (locked ? '🔒 ' : '') + (hr.name || i18n.t('未命名', 'Unnamed')) + (hr.mentor ? ' (Mentor: ' + hr.mentor + ')' : '');
           var opt = h('option', { value: id, text: label });
+          if (locked) opt.disabled = true;
           if (id === selectedHireId) opt.selected = true;
           hireSelect.appendChild(opt);
         });
