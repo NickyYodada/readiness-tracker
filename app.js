@@ -781,6 +781,10 @@
             }
           }, stObj.shortLabel);
 
+          if (allTasks.some(function (x) { return (Number(x.data.week) || 1) === wk && x.data.priority; })) {
+            tabBtn.classList.add('text-warning', 'border', 'border-warning/50', 'rounded-lg');
+            tabBtn.insertBefore(h('i', { class: 'fa-solid fa-star text-warning text-xs', 'aria-hidden': 'true' }), tabBtn.firstChild);
+          }
           if (wkRev && EVAL_META[wkRev.data.status]) {
             tabBtn.appendChild(h('i', { class: 'fa-solid ' + EVAL_META[wkRev.data.status].icon + ' text-xs', 'aria-hidden': 'true' }));
           }
@@ -865,8 +869,35 @@
             h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: timelineText.split('\n')[0].replace(/^Week\b/i, 'Category') }),
             h('span', { class: 'text-sm font-semibold', text: (f.phase || i18n.t('未命名階段', 'Untitled Stage')).replace(/^\d+\.\s*/, '') })
           );
+          var wkPriority = weekTaskIds.some(function (tid) {
+            var x = allTasks.find(function (y) { return y.id === tid; });
+            return x && x.data.priority;
+          });
+          if (firstOfWeek && (wkPriority || canManage)) {
+            var starTitle = wkPriority ? i18n.t('優先學習（點擊取消）', 'Priority (click to unset)') : i18n.t('設為優先學習', 'Mark as priority');
+            var starAttrs = {
+              type: 'button',
+              class: 'btn btn-ghost btn-xs px-1 ' + (wkPriority ? 'text-warning' : 'text-base-content/30'),
+              title: starTitle
+            };
+            if (canManage) {
+              starAttrs.onclick = function () {
+                run(Promise.all(weekTaskIds.map(function (tid) { return sync.save(COL_TASKS, tid, { priority: !wkPriority, updatedAt: Date.now() }); })));
+              };
+            } else {
+              starAttrs.disabled = true;
+            }
+            groupBar.appendChild(h('button', starAttrs,
+              h('i', { class: (wkPriority ? 'fa-solid' : 'fa-regular') + ' fa-star', 'aria-hidden': 'true' }),
+              wkPriority ? h('span', { class: 'ml-1 text-xs font-semibold', text: i18n.t('優先', 'Priority') }) : null
+            ));
+            if (wkPriority) {
+              tdTimeline.classList.add('border-l-4', 'border-warning');
+              tdTimeline.style.backgroundColor = 'color-mix(in oklab, var(--color-warning) 14%, transparent)';
+            }
+          }
           if (firstOfWeek) {
-            var wkDone = weekTaskIds.filter(function (tid) {
+            var wkDone =  weekTaskIds.filter(function (tid) {
               var x = allTasks.find(function (y) { return y.id === tid; });
               return x && isTaskDone(x.data.status);
             }).length;
