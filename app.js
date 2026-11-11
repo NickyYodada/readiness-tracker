@@ -657,16 +657,28 @@
         return meta ? meta.isDone : false;
       }
 
+      function myNameLc() { return ((ctx.session && ctx.session.name) || '').trim().toLowerCase(); }
+      function isMyHire(id) {
+        var me = myNameLc();
+        return !!me && String((hiresMap[id] && hiresMap[id].name) || '').trim().toLowerCase() === me;
+      }
+      // Mentor 欄位可為全名或名字（如 "Nicky" 對應 "Nicky Yang"）
+      function isMentorOf(id) {
+        var me = myNameLc();
+        var m = String((hiresMap[id] && hiresMap[id].mentor) || '').trim().toLowerCase();
+        return !!me && !!m && (me === m || me.indexOf(m + ' ') === 0);
+      }
+      function canReviewNow() { return canManage || (isEditorRole && isMentorOf(selectedHireId)); }
+
       function renderAll() {
         renderTplSetSelects();
         statusEl.textContent = getStatusLabel(curSyncStatus);
         var hireIds = getSortedHireIds();
         if (!didAutoPickHire && hireIds.length) {
           didAutoPickHire = true;
-          var myName = ((ctx.session && ctx.session.name) || '').trim().toLowerCase();
-          var mine = myName && hireIds.filter(function (id) {
-            return String((hiresMap[id] && hiresMap[id].name) || '').trim().toLowerCase() === myName;
-          })[0];
+          var myName = myNameLc();
+          var mine = myName && hireIds.filter(isMyHire)[0];
+          if (!mine && isEditorRole) mine = hireIds.filter(isMentorOf)[0];
           if (mine) { selectedHireId = mine; saveSelectedHirePref(mine); }
         }
         if (!selectedHireId || !hiresMap[selectedHireId]) {
@@ -696,16 +708,10 @@
         learnerModeWrap.hidden = !canWrite || isEditorRole;
         learnerModeToggle.checked = learnerMode;
 
-        var lockedToId = '';
-        if (isEditorRole) {
-          var meName = ((ctx.session && ctx.session.name) || '').trim().toLowerCase();
-          lockedToId = (meName && hireIds.filter(function (id) {
-            return String((hiresMap[id] && hiresMap[id].name) || '').trim().toLowerCase() === meName;
-          })[0]) || '';
-        }
+        var lockMode = isEditorRole && hireIds.some(function (id) { return isMyHire(id) || isMentorOf(id); });
         hireIds.forEach(function (id) {
           var hr = hiresMap[id];
-          var locked = !!lockedToId && id !== lockedToId;
+          var locked = lockMode && !isMyHire(id) && !isMentorOf(id);
           var label = (locked ? '🔒 ' : '') + (hr.name || i18n.t('未命名', 'Unnamed')) + (hr.mentor ? ' (Mentor: ' + hr.mentor + ')' : '');
           var opt = h('option', { value: id, text: label });
           if (locked) opt.disabled = true;
@@ -879,7 +885,7 @@
           }
           tdTimeline.appendChild(groupBar);
 
-          if (canManage && firstOfWeek && !compact && !reviewsByWeek[wk]) {
+          if (canReviewNow() && firstOfWeek && !compact && !reviewsByWeek[wk]) {
             groupBar.appendChild(h('button', {
               type: 'button',
               class: 'btn btn-outline btn-secondary btn-xs gap-1 whitespace-nowrap',
@@ -1061,7 +1067,7 @@
         reviewDisplay.textContent = '';
         reviewForm.hidden = true;
         reviewDisplay.hidden = false;
-        editReviewBtn.hidden = !canManage;
+        editReviewBtn.hidden = !canReviewNow();
 
         var stageTitle = stageObj.shortLabel + (stageObj.phase ? (' (' + stageObj.phase + ')') : '');
 
@@ -1069,8 +1075,8 @@
           reviewDisplay.appendChild(
             h('div', { class: 'text-sm text-base-content/60 py-4 text-center bg-base-200/40 rounded-box' },
               i18n.t(
-                '「' + stageTitle + '」尚未填寫 Mentor 進度評估。' + (canManage ? '請點選右方「填寫 / 更新本階段評估」進行記錄。' : ''),
-                'No Mentor checkpoint recorded for "' + stageTitle + '" yet. ' + (canManage ? 'Click "Write / Update Evaluation" on the right to add one.' : '')
+                '「' + stageTitle + '」尚未填寫 Mentor 進度評估。' +                 (canReviewNow() ? '請點選右方「填寫 / 更新本階段評估」進行記錄。' : ''),
+                'No Mentor checkpoint recorded for "' + stageTitle + '" yet. ' + (canReviewNow() ?  'Click "Write / Update Evaluation" on the right to add one.' : '')
               )
             )
           );
