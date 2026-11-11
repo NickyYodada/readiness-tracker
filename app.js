@@ -474,9 +474,10 @@
           var w = Number(item.data.week) || 1;
           if (!stageMap[w]) {
             var firstLine = String(item.data.timeline || ('Week ' + w)).split('\n')[0].trim();
+            var catLabel = String(item.data.phase || '').replace(/^\d+\.\s*/, '').trim();
             stageMap[w] = {
               week: w,
-              shortLabel: firstLine || ('Stage ' + w),
+              shortLabel: catLabel || firstLine || ('Stage ' + w),
               phase: item.data.phase || item.data.title || ''
             };
           }
@@ -809,7 +810,7 @@
           var timelineText = t.timeline || ('Week ' + wk);
           var tdTimeline = h('td', { colspan: compact ? '3' : '6', class: 'bg-base-200/60 py-2' });
           var groupBar = h('div', { class: 'flex items-center gap-x-3 gap-y-1 flex-wrap' },
-            h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: timelineText.split('\n')[0] }),
+            f.phase ? null : h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: timelineText.split('\n')[0] }),
             h('span', { class: 'text-sm font-semibold', text: (f.phase || i18n.t('未命名階段', 'Untitled Stage')).replace(/^\d+\.\s*/, '') })
           );
           if (firstOfWeek) {
