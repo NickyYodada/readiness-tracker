@@ -167,7 +167,7 @@
       var overviewHead = $('overviewHead');
       var overviewTable = $('overviewTable');
       var overviewCopyBtn = $('overviewCopyBtn');
-      var overviewCsvBtn = $('overviewCsvBtn');
+      var overviewPptxBtn = $('overviewPptxBtn');
       var applyTemplateBtn = $('applyTemplateBtn');
       var manageTemplateBtn = $('manageTemplateBtn');
       var editHireBtn = $('editHireBtn');
@@ -935,7 +935,7 @@
               endInput
             ));
             groupBar.appendChild(dateBox);
-          } else if (!canWrite && firstOfWeek && !compact && (t.startDate || t.endDate)) {
+          } else if ((!canWrite || compact) && firstOfWeek && (t.startDate || t.endDate)) {
             var rangeStr = (t.startDate || '?') + ' ~ ' + (t.endDate || '?');
             groupBar.appendChild(h('span', { class: 'badge badge-ghost badge-xs font-normal ml-auto', text: rangeStr }));
           }
@@ -1237,28 +1237,140 @@
       }
 
       overviewCopyBtn.addEventListener('click', function () {
+        var ok = false;
+        try {
+          var range = document.createRange();
+          range.selectNode(overviewTable);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          ok = document.execCommand('copy');
+          sel.removeAllRanges();
+        } catch (e) { ok = false; }
+        if (ok) { flashBtn(overviewCopyBtn, i18n.t('已複製', 'Copied')); return; }
         var tsv = overviewMatrix().map(function (r) { return r.join('\t'); }).join('\n');
-        var html = overviewTable.outerHTML;
-        var done = function () { flashBtn(overviewCopyBtn, i18n.t('已複製', 'Copied')); };
-        var fallback = function () { navigator.clipboard.writeText(tsv).then(done, function (e) { showErr(e); }); };
-        if (window.ClipboardItem && navigator.clipboard.write) {
-          navigator.clipboard.write([new ClipboardItem({
-            'text/html': new Blob([html], { type: 'text/html' }),
-            'text/plain': new Blob([tsv], { type: 'text/plain' })
-          })]).then(done, fallback);
-        } else fallback();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(tsv).then(
+            function () { flashBtn(overviewCopyBtn, i18n.t('已複製', 'Copied')); },
+            function () { flashBtn(overviewCopyBtn, i18n.t('複製失敗', 'Copy failed')); });
+        } else flashBtn(overviewCopyBtn, i18n.t('複製失敗', 'Copy failed'));
       });
 
-      overviewCsvBtn.addEventListener('click', function () {
-        var csv = overviewMatrix().map(function (r) {
-          return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(',');
-        }).join('\r\n');
-        var url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-        var a = h('a', { href: url, download: 'readiness-progress-' + new Date().toISOString().slice(0, 10) + '.csv' });
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      var crcTable = null;
+      function crc32(bytes) {
+        if (!crcTable) {
+          crcTable = [];
+          for (var n = 0; n < 256; n++) {
+            var c = n;
+            for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+            crcTable[n] = c >>> 0;
+          }
+        }
+        var crc = 0xFFFFFFFF;
+        for (var i = 0; i < bytes.length; i++) crc = crcTable[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+      }
+
+      // 無壓縮（store）ZIP，足以組成 .pptx
+      function zipStore(files, mime) {
+        var enc = new TextEncoder();
+        var parts = [], central = [], offset = 0, cdSize = 0;
+        files.forEach(function (f) {
+          var name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+          var lh = new DataView(new ArrayBuffer(30));
+          lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+          lh.setUint16(12, 33, true); lh.setUint32(14, crc, true);
+          lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
+          parts.push(lh, name, data);
+          var ch = new DataView(new ArrayBuffer(46));
+          ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+          ch.setUint16(14, 33, true); ch.setUint32(16, crc, true);
+          ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true);
+          ch.setUint32(42, offset, true);
+          central.push(ch, name);
+          cdSize += 46 + name.length;
+          offset += 30 + name.length + data.length;
+        });
+        var end = new DataView(new ArrayBuffer(22));
+        end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+        end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+        return new Blob(parts.concat(central, [end]), { type: mime });
+      }
+
+      function buildPptx(matrix, title) {
+        var NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+        var HDR = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+        var RELNS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+        var xe = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        var cols = matrix[0].length;
+        var totalW = 11582400, firstW = 2600000;
+        var restW = Math.floor((totalW - firstW) / Math.max(1, cols - 1));
+        var grid = '';
+        for (var c = 0; c < cols; c++) grid += '<a:gridCol w="' + (c === 0 ? firstW : restW) + '"/>';
+        var rows = matrix.map(function (r, ri) {
+          return '<a:tr h="370840">' + r.map(function (v) {
+            var hd = ri === 0;
+            return '<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="zh-TW" sz="1000"' + (hd ? ' b="1"' : '') + '>' +
+              (hd ? '<a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill>' : '') + '</a:rPr><a:t>' + xe(v) + '</a:t></a:r></a:p></a:txBody>' +
+              '<a:tcPr anchor="ctr"><a:lnB w="6350"><a:solidFill><a:srgbClr val="BBBBBB"/></a:solidFill></a:lnB>' +
+              (hd ? '<a:solidFill><a:srgbClr val="4F46E5"/></a:solidFill>' : '') + '</a:tcPr></a:tc>';
+          }).join('') + '</a:tr>';
+        }).join('');
+        var slide = HDR + '<p:sld ' + NS + '><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>' +
+          '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="304800" y="228600"/><a:ext cx="11582400" cy="500000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>' +
+          '<p:txBody><a:bodyPr wrap="square"/><a:lstStyle/><a:p><a:r><a:rPr lang="zh-TW" sz="2400" b="1"/><a:t>' + xe(title) + '</a:t></a:r></a:p></p:txBody></p:sp>' +
+          '<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="3" name="Table"/><p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr>' +
+          '<p:xfrm><a:off x="304800" y="900000"/><a:ext cx="' + totalW + '" cy="' + (370840 * matrix.length) + '"/></p:xfrm>' +
+          '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table"><a:tbl><a:tblPr firstRow="1"/><a:tblGrid>' + grid + '</a:tblGrid>' + rows + '</a:tbl></a:graphicData></a:graphic></p:graphicFrame>' +
+          '</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>';
+        var rel = function (items) {
+          return HDR + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+            items.map(function (it) { return '<Relationship Id="' + it[0] + '" Type="' + RELNS + '/' + it[1] + '" Target="' + it[2] + '"/>'; }).join('') + '</Relationships>';
+        };
+        var emptyTree = '<p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>';
+        var fills = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>';
+        var lns = '<a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>';
+        var clr = function (n, v) { return '<a:' + n + '><a:srgbClr val="' + v + '"/></a:' + n + '>'; };
+        var theme = HDR + '<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="T"><a:themeElements><a:clrScheme name="c">' +
+          clr('dk1', '000000') + clr('lt1', 'FFFFFF') + clr('dk2', '1F2937') + clr('lt2', 'F3F4F6') +
+          clr('accent1', '4F46E5') + clr('accent2', '10B981') + clr('accent3', 'F59E0B') + clr('accent4', 'EF4444') + clr('accent5', '3B82F6') + clr('accent6', '8B5CF6') +
+          clr('hlink', '0563C1') + clr('folHlink', '954F72') + '</a:clrScheme>' +
+          '<a:fontScheme name="f"><a:majorFont><a:latin typeface="Calibri"/><a:ea typeface="Microsoft JhengHei"/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface="Microsoft JhengHei"/><a:cs typeface=""/></a:minorFont></a:fontScheme>' +
+          '<a:fmtScheme name="x"><a:fillStyleLst>' + fills + fills + fills + '</a:fillStyleLst><a:lnStyleLst>' + lns + lns + lns + '</a:lnStyleLst>' +
+          '<a:effectStyleLst>' + '<a:effectStyle><a:effectLst/></a:effectStyle>'.repeat(3) + '</a:effectStyleLst><a:bgFillStyleLst>' + fills + fills + fills + '</a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>';
+        var CT = 'application/vnd.openxmlformats-officedocument.presentationml.';
+        var files = [
+          { name: '[Content_Types].xml', text: HDR + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+            '<Override PartName="/ppt/presentation.xml" ContentType="' + CT + 'presentation.main+xml"/>' +
+            '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="' + CT + 'slideMaster+xml"/>' +
+            '<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="' + CT + 'slideLayout+xml"/>' +
+            '<Override PartName="/ppt/slides/slide1.xml" ContentType="' + CT + 'slide+xml"/>' +
+            '<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/></Types>' },
+          { name: '_rels/.rels', text: rel([['rId1', 'officeDocument', 'ppt/presentation.xml']]) },
+          { name: 'ppt/presentation.xml', text: HDR + '<p:presentation ' + NS + '><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst><p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>' },
+          { name: 'ppt/_rels/presentation.xml.rels', text: rel([['rId1', 'slideMaster', 'slideMasters/slideMaster1.xml'], ['rId2', 'slide', 'slides/slide1.xml']]) },
+          { name: 'ppt/slideMasters/slideMaster1.xml', text: HDR + '<p:sldMaster ' + NS + '>' + emptyTree + '<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>' },
+          { name: 'ppt/slideMasters/_rels/slideMaster1.xml.rels', text: rel([['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'], ['rId2', 'theme', '../theme/theme1.xml']]) },
+          { name: 'ppt/slideLayouts/slideLayout1.xml', text: HDR + '<p:sldLayout ' + NS + ' type="blank">' + emptyTree + '<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>' },
+          { name: 'ppt/slideLayouts/_rels/slideLayout1.xml.rels', text: rel([['rId1', 'slideMaster', '../slideMasters/slideMaster1.xml']]) },
+          { name: 'ppt/slides/slide1.xml', text: slide },
+          { name: 'ppt/slides/_rels/slide1.xml.rels', text: rel([['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml']]) },
+          { name: 'ppt/theme/theme1.xml', text: theme }
+        ];
+        return zipStore(files, CT + 'presentation');
+      }
+
+      overviewPptxBtn.addEventListener('click', function () {
+        try {
+          var blob = buildPptx(overviewMatrix(), i18n.t('全員進度', 'All Learners Progress'));
+          var url = URL.createObjectURL(blob);
+          var a = h('a', { href: url, download: 'readiness-progress-' + new Date().toISOString().slice(0, 10) + '.pptx' });
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+          flashBtn(overviewPptxBtn, i18n.t('已產生', 'Generated'));
+        } catch (e) { showErr(e); }
       });
 
       overviewBtn.addEventListener('click', function () {
