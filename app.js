@@ -1303,7 +1303,7 @@
         var RELNS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
         var xe = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
         var cols = matrix[0].length;
-        var totalW = 11734800, FIXED = [2700000, 900000, 1350000, 1100000], MX = 228600;
+        var totalW = 11734800, FIXED = [2350000, 700000, 1250000, 1000000], MX = 228600;
         var fixedSum = 0;
         for (var fi = 0; fi < Math.min(4, cols); fi++) fixedSum += FIXED[fi];
         var restW = Math.floor((totalW - fixedSum) / Math.max(1, cols - 4));
@@ -1321,9 +1321,11 @@
             var m = String(v).match(/^(\d+)\s*\/\s*(\d+)$/);
             if (!hd && ci >= 4 && m && Number(m[2]) > 0 && m[1] === m[2]) { color = '059669'; bold = true; }
             var fill = hd ? (hot ? '4F46E5' : '1F2937') : (hot ? 'EDE9FE' : (ri % 2 === 0 ? 'F3F4F6' : 'FFFFFF'));
-            return '<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr algn="' + (ci === 0 ? 'l' : 'ctr') + '"/><a:r><a:rPr lang="zh-TW" sz="' + (hd ? 1200 : 1400) + '"' + (bold ? ' b="1"' : '') + '>' +
-              '<a:solidFill><a:srgbClr val="' + color + '"/></a:solidFill></a:rPr><a:t>' + xe(v) + '</a:t></a:r></a:p></a:txBody>' +
-              '<a:tcPr anchor="ctr" marL="180000"><a:lnL w="0">' + NOLN + '</a:lnL><a:lnR w="0">' + NOLN + '</a:lnR><a:lnT w="0">' + NOLN + '</a:lnT><a:lnB w="9525">' + (hd ? NOLN : LN) + '</a:lnB>' +
+            var rpr = '<a:rPr lang="zh-TW" sz="' + (hd ? (ci >= 4 ? 1100 : 1200) : 1400) + '"' + (bold ? ' b="1"' : '') + '><a:solidFill><a:srgbClr val="' + color + '"/></a:solidFill></a:rPr>';
+            var parts2 = (hd && ci >= 4 && /\s/.test(v)) ? [String(v).replace(/\s+\S*$/, ''), String(v).replace(/^.*\s/, '')] : [String(v)];
+            var runs = parts2.map(function (p) { return '<a:r>' + rpr + '<a:t>' + xe(p) + '</a:t></a:r>'; }).join('<a:br>' + rpr + '</a:br>');
+            return '<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr algn="' + (ci === 0 ? 'l' : 'ctr') + '"/>' + runs + '</a:p></a:txBody>' +
+              '<a:tcPr anchor="ctr" marL="' + (ci < 2 ? 180000 : 18000) + '" marR="18000"><a:lnL w="0">' + NOLN + '</a:lnL><a:lnR w="0">' + NOLN + '</a:lnR><a:lnT w="0">' + NOLN + '</a:lnT><a:lnB w="9525">' + (hd ? NOLN : LN) + '</a:lnB>' +
               '<a:solidFill><a:srgbClr val="' + fill + '"/></a:solidFill></a:tcPr></a:tc>';
           }).join('') + '</a:tr>';
         }).join('');
