@@ -142,6 +142,7 @@
       // selectedFilter: 'all' 或數字週次/階段 (1..N)
       var selectedFilter = 'all';
       var selectedReviewWeek = 1;
+      var expandedWeeks = {};
       var editingHireId = null;
       var editingTaskId = null;
       var isEditingReview = false;
@@ -788,6 +789,10 @@
         tableWrap.hidden = false;
         emptyTaskState.hidden = true;
 
+        var compact = selectedFilter === 'all';
+        var colEls = tableWrap.querySelectorAll('col');
+        for (var ci = 2; ci <= 4; ci++) { if (colEls[ci]) colEls[ci].hidden = compact; }
+
         var shownWeeks = {};
         filtered.forEach(function (item) {
           var id = item.id;
@@ -802,14 +807,32 @@
 
           // 1. Category 分組標題列（每週一條，含 Timeline 與日期範圍）
           var timelineText = t.timeline || ('Week ' + wk);
-          var tdTimeline = h('td', { colspan: '6', class: 'bg-base-200/60 py-2' });
+          var tdTimeline = h('td', { colspan: compact ? '3' : '6', class: 'bg-base-200/60 py-2' });
           var groupBar = h('div', { class: 'flex items-center gap-x-3 gap-y-1 flex-wrap' },
             h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: timelineText.split('\n')[0] }),
             h('span', { class: 'text-sm font-semibold', text: (f.phase || i18n.t('未命名階段', 'Untitled Stage')).replace(/^\d+\.\s*/, '') })
           );
+          if (firstOfWeek) {
+            var wkDone = weekTaskIds.filter(function (tid) {
+              var x = allTasks.find(function (y) { return y.id === tid; });
+              return x && isTaskDone(x.data.status);
+            }).length;
+            groupBar.appendChild(h('span', { class: 'badge badge-soft badge-primary badge-sm whitespace-nowrap', text: wkDone + ' / ' + weekTaskIds.length + i18n.t(' 完成', ' Done') }));
+          }
+          if (compact) {
+            var isOpen = !!expandedWeeks[wk];
+            groupBar.insertBefore(h('i', { class: 'fa-solid ' + (isOpen ? 'fa-chevron-down' : 'fa-chevron-right') + ' text-xs w-3', 'aria-hidden': 'true' }), groupBar.firstChild);
+            tdTimeline.classList.add('cursor-pointer');
+            tdTimeline.title = i18n.t('點擊展開 / 收合', 'Click to expand / collapse');
+            tdTimeline.onclick = function (ev) {
+              if (ev.target.closest('button')) return;
+              expandedWeeks[wk] = !expandedWeeks[wk];
+              renderAll();
+            };
+          }
           tdTimeline.appendChild(groupBar);
 
-          if (canWrite && firstOfWeek && !reviewsByWeek[wk]) {
+          if (canWrite && firstOfWeek && !compact && !reviewsByWeek[wk]) {
             groupBar.appendChild(h('button', {
               type: 'button',
               class: 'btn btn-outline btn-secondary btn-xs gap-1 whitespace-nowrap',
@@ -833,7 +856,7 @@
             ));
           }
 
-          if (canWrite && firstOfWeek) {
+          if (canWrite && firstOfWeek && !compact) {
             var dateBox = h('div', { class: 'flex items-center gap-2 flex-wrap ml-auto' });
             var endInput = h('input', {
               type: 'date',
@@ -874,7 +897,7 @@
               endInput
             ));
             groupBar.appendChild(dateBox);
-          } else if (!canWrite && firstOfWeek && (t.startDate || t.endDate)) {
+          } else if (!canWrite && firstOfWeek && !compact && (t.startDate || t.endDate)) {
             var rangeStr = (t.startDate || '?') + ' ~ ' + (t.endDate || '?');
             groupBar.appendChild(h('span', { class: 'badge badge-ghost badge-xs font-normal ml-auto', text: rangeStr }));
           }
@@ -966,13 +989,20 @@
             tdStatus.appendChild(rowActions);
           }
 
-          var tr = h('tr', { class: 'hover:bg-base-200/40' }, tdPhase, tdTopics, tdResources, tdAttach, tdRemarks, tdStatus);
+          var tr = compact
+            ? h('tr', { class: 'hover:bg-base-200/40' }, tdPhase, tdTopics, tdStatus)
+            : h('tr', { class: 'hover:bg-base-200/40' }, tdPhase, tdTopics, tdResources, tdAttach, tdRemarks, tdStatus);
           if (firstOfWeek) {
             taskTableBody.appendChild(h('tr', {}, tdTimeline));
-            taskTableBody.appendChild(h('tr', { class: 'bg-base-200/70 text-xs font-semibold text-base-content/70' },
-              h('td', { text: 'Title' }), h('td', { text: 'Duration' }), h('td', { text: 'Documents' }),
-              h('td', { text: 'Attachments' }), h('td', { text: 'Comments' }),
-              h('td', { class: 'text-center', text: 'Status & Actions' })));
+          }
+          if (compact && !expandedWeeks[wk]) return;
+          if (firstOfWeek) {
+            var hdrCells = compact
+              ? [h('td', { text: 'Title' }), h('td', { text: 'Duration' }), h('td', { class: 'text-center', text: 'Status & Actions' })]
+              : [h('td', { text: 'Title' }), h('td', { text: 'Duration' }), h('td', { text: 'Documents' }),
+                h('td', { text: 'Attachments' }), h('td', { text: 'Comments' }),
+                h('td', { class: 'text-center', text: 'Status & Actions' })];
+            taskTableBody.appendChild(h('tr', { class: 'bg-base-200/70 text-xs font-semibold text-base-content/70' }, ...hdrCells));
           }
           taskTableBody.appendChild(tr);
         });
