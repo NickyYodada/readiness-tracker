@@ -234,6 +234,7 @@
       var taskOptionalInput = $('taskOptionalInput');
       var tplDurationInput = $('tplDurationInput');
       var tplOptionalInput = $('tplOptionalInput');
+      var tplPriorityInput = $('tplPriorityInput');
       var taskResourceTextInput = $('taskResourceTextInput');
       var taskResourceInput = $('taskResourceInput');
       var taskNoteInput = $('taskNoteInput');
@@ -1160,6 +1161,7 @@
         tplResourceUrlInput.value = f.documents;
         tplRemarksInput.value = f.comments;
         tplOptionalInput.checked = f.optional;
+        tplPriorityInput.checked = !!(tplData && tplData.priority) || (!tplId && isPriorityWeek(Number(wk)));
         tplItemForm.hidden = false;
         tplPhaseInput.focus();
       }
@@ -1688,12 +1690,16 @@
             attachments: resources,
             comments: remarks,
             optional: tplOptionalInput.checked,
+            priority: tplPriorityInput.checked,
             defaultStatus: defaultStatus,
             updatedAt: Date.now()
           };
           tplItemForm.hidden = true;
           editingTplId = null;
-          run(sync.save(COL_TEMPLATES, id, payload));
+          var siblings = weekTemplateIds(wk).filter(function (k) { return k !== id && !!templatesMap[k].priority !== payload.priority; });
+          run(Promise.all([sync.save(COL_TEMPLATES, id, payload)].concat(siblings.map(function (k) {
+            return sync.save(COL_TEMPLATES, k, { priority: payload.priority, updatedAt: Date.now() });
+          }))));
         });
 
         saveCurrentAsTplBtn.addEventListener('click', function () {
