@@ -396,6 +396,16 @@
         return h('span', { class: 'whitespace-pre-wrap', text: text || '-' });
       }
 
+      // 支援「顯示文字 | 網址」或純網址；其餘維持純文字
+      function attachNode(text) {
+        var s = String(text || '').trim();
+        var idx = s.lastIndexOf(' | ');
+        var label = idx > 0 ? s.slice(0, idx).trim() : '';
+        var href = safeUrl(idx > 0 ? s.slice(idx + 3).trim() : s);
+        if (!href) return h('span', { class: 'whitespace-pre-wrap', text: s || '-' });
+        return h('a', { href: href, target: '_blank', rel: 'noopener noreferrer', class: 'link link-primary break-all' }, label || i18n.t('開啟連結', 'Open Link'));
+      }
+
       function tplSetOf(t) {
         return (t && t.setName) || DEFAULT_TPL_SET;
       }
@@ -915,17 +925,18 @@
           // 4. Documents
           var tdResources = h('td', { class: 'text-xs align-top break-all' }, docsNode(f.documents));
           // 5. Attachments + 6. Comments
-          function clampToggle(text) {
+          function clampToggle(text, node) {
             return h('div', {
               class: 'line-clamp-2 break-all cursor-pointer',
               title: i18n.t('點擊展開 / 收合', 'Click to expand / collapse'),
               onclick: function (ev) {
+                if (ev.target.closest('a')) return;
                 if (String(window.getSelection()).length) return;
                 ev.currentTarget.classList.toggle('line-clamp-2');
               }
-            }, text || '-');
+            }, node || text || '-');
           }
-          var tdAttach = h('td', { class: 'text-xs align-top break-all' }, clampToggle(f.attachments));
+          var tdAttach = h('td', { class: 'text-xs align-top break-all' }, clampToggle(f.attachments, attachNode(f.attachments)));
           var tdRemarks = h('td', { class: 'text-xs align-top text-base-content/80' }, clampToggle(f.comments));
 
           // 7. Status + 操作
@@ -1106,7 +1117,7 @@
             h('td', { class: 'whitespace-pre-wrap align-top' }, f.title, f.optional ? h('span', { class: 'badge badge-ghost badge-xs ml-1', text: 'Optional' }) : null),
             h('td', { class: 'align-top', text: f.duration || '-' }),
             h('td', { class: 'align-top break-all' }, docsNode(f.documents)),
-            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80', text: f.attachments || '-' }),
+            h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80' }, attachNode(f.attachments)),
             h('td', { class: 'whitespace-pre-wrap align-top text-base-content/80', text: f.comments || '-' }),
             h('td', { class: 'align-top text-center' },
               h('div', { class: 'flex items-center justify-center gap-1' },
