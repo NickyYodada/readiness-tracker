@@ -140,6 +140,7 @@
         selectedTplSet = localStorage.getItem(UI_PREF_TPLSET) || DEFAULT_TPL_SET;
       } catch (_) {}
       var selectedHireId = '';
+      var didAutoPickHire = false;
       try {
         selectedHireId = localStorage.getItem(UI_PREF_HIRE) || '';
       } catch (_) {}
@@ -653,6 +654,14 @@
         renderTplSetSelects();
         statusEl.textContent = getStatusLabel(curSyncStatus);
         var hireIds = getSortedHireIds();
+        if (!didAutoPickHire && hireIds.length) {
+          didAutoPickHire = true;
+          var myName = ((ctx.session && ctx.session.name) || '').trim().toLowerCase();
+          var mine = myName && hireIds.filter(function (id) {
+            return String((hiresMap[id] && hiresMap[id].name) || '').trim().toLowerCase() === myName;
+          })[0];
+          if (mine) { selectedHireId = mine; saveSelectedHirePref(mine); }
+        }
         if (!selectedHireId || !hiresMap[selectedHireId]) {
           selectedHireId = hireIds[0] || '';
           saveSelectedHirePref(selectedHireId);
