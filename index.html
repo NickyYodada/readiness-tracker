@@ -72,6 +72,11 @@
               </label>
               <select id="hireSelect" class="select select-sm select-bordered flex-1 max-w-xs"></select>
             </div>
+            <div class="flex items-center gap-3 flex-wrap">
+              <label id="learnerModeWrap" class="label cursor-pointer gap-2 py-0 text-xs" hidden data-i18n-title-zh="學員模式：僅能查看並更新學習狀態" data-i18n-title-en="Learner mode: view and update study status only">
+                <input id="learnerModeToggle" type="checkbox" class="toggle toggle-xs toggle-primary">
+                <span data-i18n-zh="學員模式" data-i18n-en="Learner Mode">學員模式</span>
+              </label>
             <div id="hireActions" class="flex items-center gap-1 flex-wrap sm:flex-nowrap" hidden>
               <select id="applyTplSelect" class="select select-xs select-bordered max-w-40" aria-label="Template" data-i18n-title-zh="選擇課綱範本" data-i18n-title-en="Choose curriculum template"></select>
               <button id="applyTemplateBtn" type="button" class="btn btn-xs btn-soft btn-primary">
@@ -83,6 +88,7 @@
               <button id="deleteHireBtn" type="button" class="btn btn-xs btn-ghost text-error">
                 <i class="fa-regular fa-trash-can" aria-hidden="true"></i><span data-i18n-zh="刪除學員" data-i18n-en="Delete Learner">刪除學員</span>
               </button>
+            </div>
             </div>
           </div>
 

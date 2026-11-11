@@ -112,6 +112,10 @@
       var sync = ctx.Sync;
       var i18n = ctx.I18n || { lang: 'zh', t: function (z) { return z; }, onChange: function () {} };
       var canWrite = !!ctx.canWrite;
+      var UI_PREF_LEARNER = 'mws:readiness-tracker-app:ui:learnerMode';
+      var learnerMode = false;
+      try { learnerMode = canWrite && localStorage.getItem(UI_PREF_LEARNER) === '1'; } catch (_) {}
+      var canManage = canWrite && !learnerMode;
       var curSyncStatus = 'loading';
 
       function getStatusLabel(s) {
@@ -153,6 +157,8 @@
       var addHireBtn = $('addHireBtn');
       var hireSelect = $('hireSelect');
       var hireActions = $('hireActions');
+      var learnerModeWrap = $('learnerModeWrap');
+      var learnerModeToggle = $('learnerModeToggle');
       var applyTemplateBtn = $('applyTemplateBtn');
       var manageTemplateBtn = $('manageTemplateBtn');
       var editHireBtn = $('editHireBtn');
@@ -666,7 +672,12 @@
         emptyHireState.hidden = true;
         workspace.hidden = false;
         hireSummary.hidden = false;
-        hireActions.hidden = !canWrite;
+        hireActions.hidden = !canManage;
+        addHireBtn.hidden = !canManage;
+        manageTemplateBtn.hidden = !canManage;
+        addTaskBtn.hidden = !canManage;
+        learnerModeWrap.hidden = !canWrite;
+        learnerModeToggle.checked = learnerMode;
 
         hireIds.forEach(function (id) {
           var hr = hiresMap[id];
@@ -744,7 +755,7 @@
           weekTabs.appendChild(tabBtn);
         });
 
-        if (canWrite) {
+        if (canManage) {
           quickAddCycleBtn.hidden = false;
           autoDateBtn.hidden = !allTasks.length;
           deleteCycleBtn.hidden = (selectedFilter === 'all');
@@ -790,8 +801,8 @@
           tableWrap.hidden = true;
           emptyTaskState.hidden = false;
           emptyTaskState.textContent = i18n.t(
-            '目前尚無讀書計畫階段項目。' + (canWrite ? '可點選上方「套用所選範本」一鍵匯入課綱，或點選「新增讀書階段項目」自行新增！' : ''),
-            'No study stages yet. ' + (canWrite ? 'Click "Apply Selected Template" above to import the stages, or click "Add Study Stage".' : '')
+            '目前尚無讀書計畫階段項目。' + (canManage ? '可點選上方「套用所選範本」一鍵匯入課綱，或點選「新增讀書階段項目」自行新增！' : ''),
+            'No study stages yet. ' + (canManage ? 'Click "Apply Selected Template" above to import the stages, or click "Add Study Stage".' : '')
           );
           return;
         }
@@ -842,7 +853,7 @@
           }
           tdTimeline.appendChild(groupBar);
 
-          if (canWrite && firstOfWeek && !compact && !reviewsByWeek[wk]) {
+          if (canManage && firstOfWeek && !compact && !reviewsByWeek[wk]) {
             groupBar.appendChild(h('button', {
               type: 'button',
               class: 'btn btn-outline btn-secondary btn-xs gap-1 whitespace-nowrap',
@@ -866,7 +877,7 @@
             ));
           }
 
-          if (canWrite && firstOfWeek && !compact) {
+          if (canManage && firstOfWeek && !compact) {
             var dateBox = h('div', { class: 'flex items-center gap-2 flex-wrap ml-auto' });
             var endInput = h('input', {
               type: 'date',
@@ -907,7 +918,7 @@
               endInput
             ));
             groupBar.appendChild(dateBox);
-          } else if (!canWrite && firstOfWeek && !compact && (t.startDate || t.endDate)) {
+          } else if (!canManage && firstOfWeek && !compact && (t.startDate || t.endDate)) {
             var rangeStr = (t.startDate || '?') + ' ~ ' + (t.endDate || '?');
             groupBar.appendChild(h('span', { class: 'badge badge-ghost badge-xs font-normal ml-auto', text: rangeStr }));
           }
@@ -972,7 +983,7 @@
             tdStatus.appendChild(h('div', {}, evalBtn));
           }
 
-          if (canWrite) {
+          if (canManage) {
             var editLbl = i18n.t('編輯階段項目', 'Edit Stage');
             var delLbl = i18n.t('刪除階段項目', 'Delete Stage');
             var rowActions = h('div', { class: 'flex items-center justify-center gap-1 pt-0.5' },
@@ -1024,7 +1035,7 @@
         reviewDisplay.textContent = '';
         reviewForm.hidden = true;
         reviewDisplay.hidden = false;
-        editReviewBtn.hidden = !canWrite;
+        editReviewBtn.hidden = !canManage;
 
         var stageTitle = stageObj.shortLabel + (stageObj.phase ? (' (' + stageObj.phase + ')') : '');
 
@@ -1032,8 +1043,8 @@
           reviewDisplay.appendChild(
             h('div', { class: 'text-sm text-base-content/60 py-4 text-center bg-base-200/40 rounded-box' },
               i18n.t(
-                '「' + stageTitle + '」尚未填寫 Mentor 進度評估。' + (canWrite ? '請點選右方「填寫 / 更新本階段評估」進行記錄。' : ''),
-                'No Mentor checkpoint recorded for "' + stageTitle + '" yet. ' + (canWrite ? 'Click "Write / Update Evaluation" on the right to add one.' : '')
+                '「' + stageTitle + '」尚未填寫 Mentor 進度評估。' + (canManage ? '請點選右方「填寫 / 更新本階段評估」進行記錄。' : ''),
+                'No Mentor checkpoint recorded for "' + stageTitle + '" yet. ' + (canManage ? 'Click "Write / Update Evaluation" on the right to add one.' : '')
               )
             )
           );
@@ -1189,6 +1200,14 @@
         taskOptionalInput.checked = f.optional;
         taskModal.showModal();
       }
+
+      learnerModeToggle.addEventListener('change', function () {
+        learnerMode = canWrite && learnerModeToggle.checked;
+        canManage = canWrite && !learnerMode;
+        try { localStorage.setItem(UI_PREF_LEARNER, learnerMode ? '1' : '0'); } catch (_) {}
+        isEditingReview = false;
+        renderAll();
+      });
 
       if (canWrite) {
         addHireBtn.hidden = false;
