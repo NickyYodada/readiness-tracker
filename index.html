@@ -159,16 +159,14 @@
 
             <div id="tableWrap" class="overflow-x-auto rounded-box border border-base-200">
               <table class="table table-sm w-full align-top table-fixed">
-                <thead class="bg-base-200/70 text-xs">
-                  <tr>
-                    <th>Title</th>
-                    <th class="w-24">Duration</th>
-                    <th class="w-28">Documents</th>
-                    <th class="w-24">Attachments</th>
-                    <th class="w-[22%]">Comments</th>
-                    <th class="w-32 text-center">Status &amp; Actions</th>
-                  </tr>
-                </thead>
+                <colgroup>
+                  <col>
+                  <col class="w-24">
+                  <col class="w-28">
+                  <col class="w-24">
+                  <col class="w-[22%]">
+                  <col class="w-32">
+                </colgroup>
                 <tbody id="taskTableBody"></tbody>
               </table>
             </div>

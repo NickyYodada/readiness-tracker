@@ -812,7 +812,7 @@
           if (canWrite && firstOfWeek && !reviewsByWeek[wk]) {
             groupBar.appendChild(h('button', {
               type: 'button',
-              class: 'btn btn-ghost btn-xs text-xs gap-1',
+              class: 'btn btn-outline btn-secondary btn-xs gap-1 whitespace-nowrap',
               onclick: function () {
                 var hr = hiresMap[selectedHireId];
                 if (hr && !hr.mentor) {
@@ -967,7 +967,13 @@
           }
 
           var tr = h('tr', { class: 'hover:bg-base-200/40' }, tdPhase, tdTopics, tdResources, tdAttach, tdRemarks, tdStatus);
-          if (firstOfWeek) taskTableBody.appendChild(h('tr', {}, tdTimeline));
+          if (firstOfWeek) {
+            taskTableBody.appendChild(h('tr', {}, tdTimeline));
+            taskTableBody.appendChild(h('tr', { class: 'bg-base-200/70 text-xs font-semibold text-base-content/70' },
+              h('td', { text: 'Title' }), h('td', { text: 'Duration' }), h('td', { text: 'Documents' }),
+              h('td', { text: 'Attachments' }), h('td', { text: 'Comments' }),
+              h('td', { class: 'text-center', text: 'Status & Actions' })));
+          }
           taskTableBody.appendChild(tr);
         });
       }
