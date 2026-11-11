@@ -780,8 +780,8 @@
           tableWrap.hidden = true;
           emptyTaskState.hidden = false;
           emptyTaskState.textContent = i18n.t(
-            '目前尚無讀書計畫階段項目。' + (canWrite ? '可點選上方「套用預設課綱範本」一鍵匯入 5 個階段課綱，或點選「新增讀書階段項目」自行新增！' : ''),
-            'No study stages yet. ' + (canWrite ? 'Click "Apply Default Curriculum" above to import the 5 stages, or click "Add Study Stage".' : '')
+            '目前尚無讀書計畫階段項目。' + (canWrite ? '可點選上方「套用所選範本」一鍵匯入課綱，或點選「新增讀書階段項目」自行新增！' : ''),
+            'No study stages yet. ' + (canWrite ? 'Click "Apply Selected Template" above to import the stages, or click "Add Study Stage".' : '')
           );
           return;
         }
@@ -1194,12 +1194,12 @@
           var existingRevCount = Object.keys(getHireReviews(selectedHireId)).length;
           var msg = (existingCount > 0 || existingRevCount > 0)
             ? i18n.t(
-                '確定要「套用預設課綱範本並覆蓋當下資料」嗎？\n（目前共 ' + existingCount + ' 筆讀書階段與 ' + existingRevCount + ' 筆 Mentor 階段進度評估將一併重置）',
-                'Apply default curriculum template and OVERWRITE current data?\n(' + existingCount + ' stage(s) and ' + existingRevCount + ' Mentor checkpoint(s) will be reset)'
+                '確定要「套用範本『' + selectedTplSet + '』並覆蓋當下資料」嗎？\n（目前共 ' + existingCount + ' 筆讀書階段與 ' + existingRevCount + ' 筆 Mentor 階段進度評估將一併重置）',
+                'Apply template "' + selectedTplSet + '" and OVERWRITE current data?\n(' + existingCount + ' stage(s) and ' + existingRevCount + ' Mentor checkpoint(s) will be reset)'
               )
             : i18n.t(
-                '確定要套用預設課綱範本並重置 Mentor 階段進度評估嗎？',
-                'Apply default curriculum template and reset Mentor stage checkpoints?'
+                '確定要套用範本『' + selectedTplSet + '』並重置 Mentor 階段進度評估嗎？',
+                'Apply template "' + selectedTplSet + '" and reset Mentor stage checkpoints?'
               );
           askConfirm(
             msg,
