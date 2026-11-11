@@ -161,6 +161,9 @@
       var hireActions = $('hireActions');
       var learnerModeWrap = $('learnerModeWrap');
       var learnerModeToggle = $('learnerModeToggle');
+      var overviewBtn = $('overviewBtn');
+      var overviewModal = $('overviewModal');
+      var overviewBody = $('overviewBody');
       var applyTemplateBtn = $('applyTemplateBtn');
       var manageTemplateBtn = $('manageTemplateBtn');
       var editHireBtn = $('editHireBtn');
@@ -1210,6 +1213,39 @@
         taskOptionalInput.checked = f.optional;
         taskModal.showModal();
       }
+
+      overviewBtn.addEventListener('click', function () {
+        overviewBody.textContent = '';
+        getSortedHireIds().forEach(function (id) {
+          var hr = hiresMap[id];
+          var tasks = getHireTasks(id);
+          var done = tasks.filter(function (t) { return isTaskDone(t.data.status); }).length;
+          var pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+          overviewBody.appendChild(h('tr', {
+            class: 'hover cursor-pointer',
+            onclick: function () {
+              selectedHireId = id;
+              saveSelectedHirePref(id);
+              overviewModal.close();
+              renderAll();
+            }
+          },
+            h('td', { class: 'font-medium', text: hr.name || '-' }),
+            h('td', { text: hr.mentor || '-' }),
+            h('td', { text: done + ' / ' + tasks.length }),
+            h('td', {},
+              h('div', { class: 'flex items-center gap-2' },
+                h('progress', { class: 'progress progress-primary w-24', value: String(pct), max: '100' }),
+                h('span', { class: 'text-xs', text: pct + '%' })
+              )
+            )
+          ));
+        });
+        if (!overviewBody.children.length) {
+          overviewBody.appendChild(h('tr', {}, h('td', { colspan: '4', class: 'text-center text-base-content/60', text: i18n.t('尚無學員', 'No learners') })));
+        }
+        overviewModal.showModal();
+      });
 
       learnerModeToggle.addEventListener('change', function () {
         learnerMode = canWrite && learnerModeToggle.checked;

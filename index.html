@@ -73,6 +73,9 @@
               <select id="hireSelect" class="select select-sm select-bordered flex-1 max-w-xs"></select>
             </div>
             <div class="flex items-center gap-3 flex-wrap">
+              <button id="overviewBtn" type="button" class="btn btn-xs btn-soft">
+                <i class="fa-solid fa-chart-simple" aria-hidden="true"></i><span data-i18n-zh="全員進度" data-i18n-en="All Progress">全員進度</span>
+              </button>
               <label id="learnerModeWrap" class="label cursor-pointer gap-2 py-0 text-xs" hidden data-i18n-title-zh="學員模式：僅能查看並更新學習狀態" data-i18n-title-en="Learner mode: view and update study status only">
                 <input id="learnerModeToggle" type="checkbox" class="toggle toggle-xs toggle-primary">
                 <span data-i18n-zh="學員模式" data-i18n-en="Learner Mode">學員模式</span>
@@ -465,6 +468,33 @@
             <button id="tplListCloseBtn" type="button" class="btn btn-sm btn-ghost" data-i18n-zh="關閉" data-i18n-en="Close">關閉</button>
           </div>
         </div>
+      </dialog>
+
+      <!-- 全員進度 Modal -->
+      <dialog id="overviewModal" class="modal">
+        <div class="modal-box max-w-2xl space-y-3">
+          <h3 class="font-bold text-base flex items-center gap-2">
+            <i class="fa-solid fa-chart-simple text-primary" aria-hidden="true"></i>
+            <span data-i18n-zh="全員進度" data-i18n-en="All Progress">全員進度</span>
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th data-i18n-zh="學員" data-i18n-en="Learner">學員</th>
+                  <th data-i18n-zh="Mentor" data-i18n-en="Mentor">Mentor</th>
+                  <th data-i18n-zh="完成 / 總數" data-i18n-en="Done / Total">完成 / 總數</th>
+                  <th class="w-40" data-i18n-zh="進度" data-i18n-en="Progress">進度</th>
+                </tr>
+              </thead>
+              <tbody id="overviewBody"></tbody>
+            </table>
+          </div>
+          <div class="modal-action">
+            <form method="dialog"><button class="btn btn-sm" data-i18n-zh="關閉" data-i18n-en="Close">關閉</button></form>
+          </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button aria-label="Close">close</button></form>
       </dialog>
 
       <!-- 共用確認對話框 Modal（取代容易被內嵌瀏覽器攔截的原生 confirm/prompt） -->
