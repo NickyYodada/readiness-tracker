@@ -181,6 +181,7 @@
       var taskTableBody = $('taskTableBody');
 
       var weekReviewTitle = $('weekReviewTitle');
+      var reviewCard = $('reviewCard');
       var reviewStageSelect = $('reviewStageSelect');
       var reviewCurrentBadge = $('reviewCurrentBadge');
       var editReviewBtn = $('editReviewBtn');
@@ -762,6 +763,7 @@
           var activeStageObj = stages.find(function (s) { return s.week === selectedReviewWeek; }) || { week: selectedReviewWeek, shortLabel: 'Stage ' + selectedReviewWeek };
           renderWeekReview(reviewsByWeek[selectedReviewWeek], currentHire, activeStageObj);
         }
+        reviewCard.hidden = !isEditingReview && !reviewsByWeek[selectedReviewWeek];
       }
 
       function renderStudyPlanTable(allTasks, reviewsByWeek) {
@@ -806,6 +808,24 @@
             h('span', { class: 'text-sm font-semibold', text: (f.phase || i18n.t('未命名階段', 'Untitled Stage')).replace(/^\d+\.\s*/, '') })
           );
           tdTimeline.appendChild(groupBar);
+
+          if (canWrite && firstOfWeek && !reviewsByWeek[wk]) {
+            groupBar.appendChild(h('button', {
+              type: 'button',
+              class: 'btn btn-ghost btn-xs text-xs gap-1',
+              onclick: function () {
+                selectedReviewWeek = wk;
+                isEditingReview = false;
+                renderAll();
+                reviewCard.hidden = false;
+                editReviewBtn.click();
+                reviewCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            },
+              h('i', { class: 'fa-regular fa-pen-to-square', 'aria-hidden': 'true' }),
+              i18n.t('寫 Mentor 評估', 'Write Mentor Review')
+            ));
+          }
 
           if (canWrite && firstOfWeek) {
             var dateBox = h('div', { class: 'flex items-center gap-2 flex-wrap ml-auto' });
