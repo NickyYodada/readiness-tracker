@@ -1303,24 +1303,49 @@
         var RELNS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
         var xe = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
         var cols = matrix[0].length;
-        var totalW = 11582400, firstW = 2600000;
-        var restW = Math.floor((totalW - firstW) / Math.max(1, cols - 1));
+        var totalW = 11582400, FIXED = [2400000, 900000, 1100000, 900000];
+        var fixedSum = 0;
+        for (var fi = 0; fi < Math.min(4, cols); fi++) fixedSum += FIXED[fi];
+        var restW = Math.floor((totalW - fixedSum) / Math.max(1, cols - 4));
         var grid = '';
-        for (var c = 0; c < cols; c++) grid += '<a:gridCol w="' + (c === 0 ? firstW : restW) + '"/>';
+        for (var c = 0; c < cols; c++) grid += '<a:gridCol w="' + (c < 4 ? FIXED[c] : restW) + '"/>';
+        var HDR_H = 480000, ROW_H = 400000;
         var rows = matrix.map(function (r, ri) {
-          return '<a:tr h="370840">' + r.map(function (v) {
+          return '<a:tr h="' + (ri === 0 ? HDR_H : ROW_H) + '">' + r.map(function (v, ci) {
             var hd = ri === 0;
-            return '<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="zh-TW" sz="1000"' + (hd ? ' b="1"' : '') + '>' +
-              (hd ? '<a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill>' : '') + '</a:rPr><a:t>' + xe(v) + '</a:t></a:r></a:p></a:txBody>' +
-              '<a:tcPr anchor="ctr"><a:lnB w="6350"><a:solidFill><a:srgbClr val="BBBBBB"/></a:solidFill></a:lnB>' +
-              (hd ? '<a:solidFill><a:srgbClr val="4F46E5"/></a:solidFill>' : '') + '</a:tcPr></a:tc>';
+            var bold = hd || ci === 0 || ci === 2;
+            var color = hd ? 'FFFFFF' : '1F2937';
+            var m = String(v).match(/^(\d+)\s*\/\s*(\d+)$/);
+            if (!hd && ci >= 4 && m && Number(m[2]) > 0 && m[1] === m[2]) { color = '059669'; bold = true; }
+            var fill = hd ? '4F46E5' : (ri % 2 === 1 ? 'F3F4F6' : 'FFFFFF');
+            return '<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr algn="' + (ci === 0 ? 'l' : 'ctr') + '"/><a:r><a:rPr lang="zh-TW" sz="1100"' + (bold ? ' b="1"' : '') + '>' +
+              '<a:solidFill><a:srgbClr val="' + color + '"/></a:solidFill></a:rPr><a:t>' + xe(v) + '</a:t></a:r></a:p></a:txBody>' +
+              '<a:tcPr anchor="ctr" marL="108000"><a:lnL w="12700"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:lnL><a:lnR w="12700"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:lnR>' +
+              '<a:lnT w="12700"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:lnT><a:lnB w="12700"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:lnB>' +
+              '<a:solidFill><a:srgbClr val="' + fill + '"/></a:solidFill></a:tcPr></a:tc>';
           }).join('') + '</a:tr>';
         }).join('');
+        var body = matrix.slice(1);
+        var pctSum = body.reduce(function (s, r) { return s + (parseInt(r[3], 10) || 0); }, 0);
+        var totalPer = body.length ? String(body[0][2]).split('/').pop().trim() : '0';
+        var stats = [
+          [String(body.length), i18n.t('位學員', 'Learners')],
+          [totalPer, i18n.t('每人總任務數', 'Total tasks per learner')],
+          [String(Math.max(0, cols - 4)), i18n.t('個 Category', 'Categories')],
+          [(body.length ? Math.round(pctSum / body.length) : 0) + '%', i18n.t('整體進度', 'Overall progress')]
+        ];
+        var gap = 152400, cardW = Math.floor((totalW - gap * 3) / 4), nextId = 10;
+        var cards = stats.map(function (s, i) {
+          return '<p:sp><p:nvSpPr><p:cNvPr id="' + (nextId++) + '" name="Card' + i + '"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="' + (304800 + i * (cardW + gap)) + '" y="900000"/><a:ext cx="' + cardW + '" cy="760000"/></a:xfrm>' +
+            '<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 12000"/></a:avLst></a:prstGeom><a:solidFill><a:srgbClr val="F3F4F6"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr>' +
+            '<p:txBody><a:bodyPr wrap="square" lIns="180000" anchor="ctr"/><a:lstStyle/><a:p><a:r><a:rPr lang="zh-TW" sz="2800" b="1"><a:solidFill><a:srgbClr val="4F46E5"/></a:solidFill></a:rPr><a:t>' + xe(s[0]) + '</a:t></a:r>' +
+            '<a:r><a:rPr lang="zh-TW" sz="1200"><a:solidFill><a:srgbClr val="4B5563"/></a:solidFill></a:rPr><a:t>  ' + xe(s[1]) + '</a:t></a:r></a:p></p:txBody></p:sp>';
+        }).join('');
         var slide = HDR + '<p:sld ' + NS + '><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>' +
-          '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="304800" y="228600"/><a:ext cx="11582400" cy="500000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>' +
-          '<p:txBody><a:bodyPr wrap="square"/><a:lstStyle/><a:p><a:r><a:rPr lang="zh-TW" sz="2400" b="1"/><a:t>' + xe(title) + '</a:t></a:r></a:p></p:txBody></p:sp>' +
+          '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="304800" y="228600"/><a:ext cx="11582400" cy="560000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>' +
+          '<p:txBody><a:bodyPr wrap="square"/><a:lstStyle/><a:p><a:r><a:rPr lang="zh-TW" sz="2800" b="1"/><a:t>' + xe(title) + '</a:t></a:r></a:p></p:txBody></p:sp>' + cards +
           '<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="3" name="Table"/><p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr>' +
-          '<p:xfrm><a:off x="304800" y="900000"/><a:ext cx="' + totalW + '" cy="' + (370840 * matrix.length) + '"/></p:xfrm>' +
+          '<p:xfrm><a:off x="304800" y="1850000"/><a:ext cx="' + totalW + '" cy="' + (HDR_H + ROW_H * (matrix.length - 1)) + '"/></p:xfrm>' +
           '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table"><a:tbl><a:tblPr firstRow="1"/><a:tblGrid>' + grid + '</a:tblGrid>' + rows + '</a:tbl></a:graphicData></a:graphic></p:graphicFrame>' +
           '</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>';
         var rel = function (items) {
