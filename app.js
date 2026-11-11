@@ -164,6 +164,7 @@
       var overviewBtn = $('overviewBtn');
       var overviewModal = $('overviewModal');
       var overviewBody = $('overviewBody');
+      var overviewHead = $('overviewHead');
       var applyTemplateBtn = $('applyTemplateBtn');
       var manageTemplateBtn = $('manageTemplateBtn');
       var editHireBtn = $('editHireBtn');
@@ -1216,12 +1217,36 @@
 
       overviewBtn.addEventListener('click', function () {
         overviewBody.textContent = '';
-        getSortedHireIds().forEach(function (id) {
+        overviewHead.textContent = '';
+        var ids = getSortedHireIds();
+        var weekSet = {};
+        ids.forEach(function (id) {
+          getHireTasks(id).forEach(function (t) { weekSet[Number(t.data.week) || 1] = true; });
+        });
+        var weeks = Object.keys(weekSet).map(Number).sort(function (a, b) { return a - b; });
+        [i18n.t('學員', 'Learner'), 'Mentor', i18n.t('完成 / 總數', 'Done / Total'), i18n.t('進度', 'Progress')]
+          .forEach(function (s) { overviewHead.appendChild(h('th', { text: s })); });
+        weeks.forEach(function (w) {
+          overviewHead.appendChild(h('th', { class: 'whitespace-nowrap text-center', text: 'Category ' + w }));
+        });
+        ids.forEach(function (id) {
           var hr = hiresMap[id];
           var tasks = getHireTasks(id);
           var done = tasks.filter(function (t) { return isTaskDone(t.data.status); }).length;
           var pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
-          overviewBody.appendChild(h('tr', {
+          var perWeek = {};
+          tasks.forEach(function (t) {
+            var w = Number(t.data.week) || 1;
+            var c = perWeek[w] || (perWeek[w] = { d: 0, n: 0 });
+            c.n++;
+            if (isTaskDone(t.data.status)) c.d++;
+          });
+          var weekCells = weeks.map(function (w) {
+            var c = perWeek[w];
+            if (!c) return h('td', { class: 'text-center text-base-content/40', text: '-' });
+            return h('td', { class: 'text-center whitespace-nowrap' + (c.d === c.n ? ' text-success font-semibold' : ''), text: c.d + '/' + c.n });
+          });
+          var rowEl = h('tr', {
             class: 'hover cursor-pointer',
             onclick: function () {
               selectedHireId = id;
@@ -1230,16 +1255,18 @@
               renderAll();
             }
           },
-            h('td', { class: 'font-medium', text: hr.name || '-' }),
+            h('td', { class: 'font-medium whitespace-nowrap', text: (hr.name || '-') + (hr.roleTitle ? ' (' + hr.roleTitle + ')' : '') }),
             h('td', { text: hr.mentor || '-' }),
-            h('td', { text: done + ' / ' + tasks.length }),
+            h('td', { class: 'whitespace-nowrap', text: done + ' / ' + tasks.length }),
             h('td', {},
               h('div', { class: 'flex items-center gap-2' },
                 h('progress', { class: 'progress progress-primary w-24', value: String(pct), max: '100' }),
                 h('span', { class: 'text-xs', text: pct + '%' })
               )
             )
-          ));
+          );
+          weekCells.forEach(function (c) { rowEl.appendChild(c); });
+          overviewBody.appendChild(rowEl);
         });
         if (!overviewBody.children.length) {
           overviewBody.appendChild(h('tr', {}, h('td', { colspan: '4', class: 'text-center text-base-content/60', text: i18n.t('尚無學員', 'No learners') })));

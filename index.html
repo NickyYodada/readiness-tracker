@@ -472,21 +472,14 @@
 
       <!-- 全員進度 Modal -->
       <dialog id="overviewModal" class="modal">
-        <div class="modal-box max-w-2xl space-y-3">
+        <div class="modal-box max-w-6xl space-y-3">
           <h3 class="font-bold text-base flex items-center gap-2">
             <i class="fa-solid fa-chart-simple text-primary" aria-hidden="true"></i>
             <span data-i18n-zh="全員進度" data-i18n-en="All Progress">全員進度</span>
           </h3>
           <div class="overflow-x-auto">
             <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th data-i18n-zh="學員" data-i18n-en="Learner">學員</th>
-                  <th data-i18n-zh="Mentor" data-i18n-en="Mentor">Mentor</th>
-                  <th data-i18n-zh="完成 / 總數" data-i18n-en="Done / Total">完成 / 總數</th>
-                  <th class="w-40" data-i18n-zh="進度" data-i18n-en="Progress">進度</th>
-                </tr>
-              </thead>
+              <thead><tr id="overviewHead"></tr></thead>
               <tbody id="overviewBody"></tbody>
             </table>
           </div>
