@@ -1353,39 +1353,45 @@
             showErr(new Error(i18n.t('目前選定的學員尚無任何課綱階段可存為範本。', 'Current learner has no study stages to save as template.')));
             return;
           }
+          var newName = tplNewSetInput.value.trim().slice(0, 60);
+          if (!newName) {
+            showErr(new Error(i18n.t('請先在「新範本名稱」欄位輸入名稱，再按「將目前學員的課綱存為範本」。', 'Enter a name in the "New template name" field first.')));
+            tplNewSetInput.focus();
+            return;
+          }
+          if (getTemplateSetNames().some(function (n) { return n.toLowerCase() === newName.toLowerCase(); })) {
+            showErr(new Error(i18n.t('已有同名範本「' + newName + '」，請換一個名稱（不會覆蓋既有範本）。', 'A template named "' + newName + '" already exists. Choose another name (existing templates are never overwritten).')));
+            tplNewSetInput.focus();
+            return;
+          }
           var confirmMsg = i18n.t(
-            '確定要將目前學員的 ' + currentTasks.length + ' 個階段覆蓋儲存為新的「預設課綱範本」嗎？',
-            'Overwrite the default curriculum template with the ' + currentTasks.length + ' stages from the current learner?'
+            '確定要將目前學員的 ' + currentTasks.length + ' 個階段另存為新範本「' + newName + '」嗎？',
+            'Save the ' + currentTasks.length + ' stages of the current learner as new template "' + newName + '"?'
           );
           askConfirm(confirmMsg, function () {
-            var removeOps = getSortedTemplates().map(function (t) {
-              return sync.remove(COL_TEMPLATES, t._id);
+            var saveOps = currentTasks.map(function (item, idx) {
+              var t = item.data;
+              var wk = Number(t.week) || (idx + 1);
+              var f = itemFields(t);
+              return sync.save(COL_TEMPLATES, 'tpl_w' + (idx + 1) + '_' + sync.newId(), {
+                setName: newName,
+                order: idx + 1,
+                week: wk,
+                timeline: t.timeline || ('Week ' + wk),
+                phase: f.phase || t.title || '',
+                title: f.title,
+                duration: f.duration,
+                documents: f.documents,
+                attachments: f.attachments,
+                comments: f.comments,
+                optional: f.optional,
+                defaultStatus: t.status === 'final_eval' ? 'final_eval' : 'pending',
+                updatedAt: Date.now()
+              });
             });
-            run(
-              Promise.all(removeOps).then(function () {
-                var saveOps = currentTasks.map(function (item, idx) {
-                  var t = item.data;
-                  var wk = Number(t.week) || (idx + 1);
-                  var f = itemFields(t);
-                  return sync.save(COL_TEMPLATES, 'tpl_w' + (idx + 1) + '_' + sync.newId(), {
-                    setName: selectedTplSet,
-                    order: idx + 1,
-                    week: wk,
-                    timeline: t.timeline || ('Week ' + wk),
-                    phase: f.phase || t.title || '',
-                    title: f.title,
-                    duration: f.duration,
-                    documents: f.documents,
-                    attachments: f.attachments,
-                    comments: f.comments,
-                    optional: f.optional,
-                    defaultStatus: t.status === 'final_eval' ? 'final_eval' : 'pending',
-                    updatedAt: Date.now()
-                  });
-                });
-                return Promise.all(saveOps);
-              })
-            );
+            tplNewSetInput.value = '';
+            setSelectedTplSet(newName);
+            run(Promise.all(saveOps));
           });
         });
 
