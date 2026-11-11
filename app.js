@@ -894,7 +894,7 @@
             ));
           }
 
-          if (canManage && firstOfWeek && !compact) {
+          if (canWrite && firstOfWeek && !compact) {
             var dateBox = h('div', { class: 'flex items-center gap-2 flex-wrap ml-auto' });
             var endInput = h('input', {
               type: 'date',
@@ -935,7 +935,7 @@
               endInput
             ));
             groupBar.appendChild(dateBox);
-          } else if (!canManage && firstOfWeek && !compact && (t.startDate || t.endDate)) {
+          } else if (!canWrite && firstOfWeek && !compact && (t.startDate || t.endDate)) {
             var rangeStr = (t.startDate || '?') + ' ~ ' + (t.endDate || '?');
             groupBar.appendChild(h('span', { class: 'badge badge-ghost badge-xs font-normal ml-auto', text: rangeStr }));
           }
