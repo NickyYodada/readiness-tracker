@@ -86,7 +86,10 @@
 
       function draw() {
         tbody.textContent = '';
-        const keys = Object.keys(roster).sort((a, b) => String(roster[a].name).localeCompare(String(roster[b].name)));
+        const rank = { admin: 0, viewer: 1, editor: 2 };
+        const keys = Object.keys(roster).sort((a, b) =>
+          ((rank[roster[a].role] ?? 9) - (rank[roster[b].role] ?? 9)) ||
+          String(roster[a].name).localeCompare(String(roster[b].name), 'en', { sensitivity: 'base' }));
         if (!keys.length) { tbody.appendChild(h('tr', {}, h('td', { colspan: '4', class: 'mws-note', text: '名單是空的' }))); return; }
         keys.forEach((k) => tbody.appendChild(row(k, roster[k])));
       }
