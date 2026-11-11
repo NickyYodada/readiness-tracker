@@ -113,8 +113,9 @@
       var i18n = ctx.I18n || { lang: 'zh', t: function (z) { return z; }, onChange: function () {} };
       var canWrite = !!ctx.canWrite;
       var UI_PREF_LEARNER = 'mws:readiness-tracker-app:ui:learnerMode';
-      var learnerMode = false;
-      try { learnerMode = canWrite && localStorage.getItem(UI_PREF_LEARNER) === '1'; } catch (_) {}
+      var isEditorRole = !!(ctx.session && ctx.session.role === 'editor');
+      var learnerMode = isEditorRole;
+      try { if (!isEditorRole) learnerMode = canWrite && localStorage.getItem(UI_PREF_LEARNER) === '1'; } catch (_) {}
       var canManage = canWrite && !learnerMode;
       var curSyncStatus = 'loading';
 
@@ -676,7 +677,7 @@
         addHireBtn.hidden = !canManage;
         manageTemplateBtn.hidden = !canManage;
         addTaskBtn.hidden = !canManage;
-        learnerModeWrap.hidden = !canWrite;
+        learnerModeWrap.hidden = !canWrite || isEditorRole;
         learnerModeToggle.checked = learnerMode;
 
         hireIds.forEach(function (id) {
