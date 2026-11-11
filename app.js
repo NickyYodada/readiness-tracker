@@ -1110,7 +1110,7 @@
           ? i18n.t('編輯學員資料', 'Edit Learner')
           : i18n.t('新增學員', 'Add Learner');
         hireNameInput.value = (hireData && hireData.name) || '';
-        hireMentorInput.value = (hireData && hireData.mentor) || (ctx.session && ctx.session.name) || '';
+        hireMentorInput.value = (hireData && hireData.mentor) || '';
         hireRoleInput.value = (hireData && hireData.roleTitle) || '';
         hireDateInput.value = (hireData && hireData.startDate) || new Date().toISOString().slice(0, 10);
         hireSeedWrap.hidden = !!editingHireId;
