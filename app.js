@@ -1187,11 +1187,24 @@
           var f = itemFields(tpl);
           if (lastTplWeek !== wk) {
             lastTplWeek = wk;
+            var hdrWk = wk;
+            var hdrPri = isPriorityWeek(hdrWk);
             tplTableBody.appendChild(h('tr', {},
               h('td', { colspan: '6', class: 'bg-base-200/60 py-2' },
                 h('div', { class: 'flex items-center gap-2' },
                   h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: (tpl.timeline || ('Week ' + wk)).replace(/^Week\b/i, 'Category') }),
-                  h('span', { class: 'text-sm font-semibold', text: (f.phase || '').replace(/^\d+\.\s*/, '') })
+                  h('span', { class: 'text-sm font-semibold', text: (f.phase || '').replace(/^\d+\.\s*/, '') }),
+                  h('button', {
+                    type: 'button',
+                    class: 'btn btn-ghost btn-xs px-1 ' + (hdrPri ? 'text-warning' : 'text-base-content/40'),
+                    title: hdrPri ? i18n.t('優先學習（點擊取消）', 'Priority (click to unset)') : i18n.t('設為優先學習', 'Mark as priority'),
+                    onclick: function () {
+                      run(Promise.all(weekTemplateIds(hdrWk).map(function (k) { return sync.save(COL_TEMPLATES, k, { priority: !hdrPri, updatedAt: Date.now() }); })));
+                    }
+                  },
+                    h('i', { class: (hdrPri ? 'fa-solid' : 'fa-regular') + ' fa-star', 'aria-hidden': 'true' }),
+                    h('span', { class: 'ml-1 text-xs', text: hdrPri ? i18n.t('優先', 'Priority') : i18n.t('設為優先', 'Set priority') })
+                  )
                 )
               )
             ));
