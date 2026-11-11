@@ -763,7 +763,7 @@
           var activeStageObj = stages.find(function (s) { return s.week === selectedReviewWeek; }) || { week: selectedReviewWeek, shortLabel: 'Stage ' + selectedReviewWeek };
           renderWeekReview(reviewsByWeek[selectedReviewWeek], currentHire, activeStageObj);
         }
-        reviewCard.hidden = !isEditingReview && !reviewsByWeek[selectedReviewWeek];
+        reviewCard.hidden = !currentHire.mentor || (!isEditingReview && !reviewsByWeek[selectedReviewWeek]);
       }
 
       function renderStudyPlanTable(allTasks, reviewsByWeek) {
@@ -814,6 +814,12 @@
               type: 'button',
               class: 'btn btn-ghost btn-xs text-xs gap-1',
               onclick: function () {
+                var hr = hiresMap[selectedHireId];
+                if (hr && !hr.mentor) {
+                  openHireModal(selectedHireId, { name: hr.name, mentor: '', roleTitle: hr.roleTitle, startDate: hr.startDate });
+                  hireMentorInput.focus();
+                  return;
+                }
                 selectedReviewWeek = wk;
                 isEditingReview = false;
                 renderAll();
