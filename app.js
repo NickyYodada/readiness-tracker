@@ -465,6 +465,16 @@
         });
       }
 
+      function weekTemplateIds(wk) {
+        return Object.keys(templatesMap).filter(function (k) {
+          var tp = templatesMap[k];
+          return tp && (Number(tp.week) || Number(tp.order) || 0) === wk;
+        });
+      }
+      function isPriorityWeek(wk) {
+        return weekTemplateIds(wk).some(function (k) { return templatesMap[k].priority; });
+      }
+
       function getHireTasks(hireId) {
         var list = [];
         Object.keys(tasksMap).forEach(function (id) {
@@ -781,7 +791,7 @@
             }
           }, stObj.shortLabel);
 
-          if (allTasks.some(function (x) { return (Number(x.data.week) || 1) === wk && x.data.priority; })) {
+          if (isPriorityWeek(wk)) {
             tabBtn.classList.add('text-warning', 'border', 'border-warning/50', 'rounded-lg');
             tabBtn.insertBefore(h('i', { class: 'fa-solid fa-star text-warning text-xs', 'aria-hidden': 'true' }), tabBtn.firstChild);
           }
@@ -869,10 +879,7 @@
             h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: timelineText.split('\n')[0].replace(/^Week\b/i, 'Category') }),
             h('span', { class: 'text-sm font-semibold', text: (f.phase || i18n.t('未命名階段', 'Untitled Stage')).replace(/^\d+\.\s*/, '') })
           );
-          var wkPriority = weekTaskIds.some(function (tid) {
-            var x = allTasks.find(function (y) { return y.id === tid; });
-            return x && x.data.priority;
-          });
+          var wkPriority = isPriorityWeek(wk);
           if (firstOfWeek && (wkPriority || canManage)) {
             var starTitle = wkPriority ? i18n.t('優先學習（點擊取消）', 'Priority (click to unset)') : i18n.t('設為優先學習', 'Mark as priority');
             var starAttrs = {
@@ -882,7 +889,7 @@
             };
             if (canManage) {
               starAttrs.onclick = function () {
-                run(Promise.all(weekTaskIds.map(function (tid) { return sync.save(COL_TASKS, tid, { priority: !wkPriority, updatedAt: Date.now() }); })));
+                run(Promise.all(weekTemplateIds(wk).map(function (k) { return sync.save(COL_TEMPLATES, k, { priority: !wkPriority, updatedAt: Date.now() }); })));
               };
             } else {
               starAttrs.disabled = true;
