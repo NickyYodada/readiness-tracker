@@ -473,11 +473,10 @@
         allTasks.forEach(function (item) {
           var w = Number(item.data.week) || 1;
           if (!stageMap[w]) {
-            var firstLine = String(item.data.timeline || ('Week ' + w)).split('\n')[0].trim();
-            var catLabel = String(item.data.phase || '').replace(/^\d+\.\s*/, '').trim();
+            var firstLine = String(item.data.timeline || ('Week ' + w)).split('\n')[0].trim().replace(/^Week\b/i, 'Category');
             stageMap[w] = {
               week: w,
-              shortLabel: catLabel || firstLine || ('Stage ' + w),
+              shortLabel: firstLine || ('Stage ' + w),
               phase: item.data.phase || item.data.title || ''
             };
           }
@@ -491,7 +490,7 @@
         var weeks = Object.keys(stageMap).map(Number).sort(function (a, b) { return a - b; });
         if (!weeks.length) {
           for (var i = 1; i <= 5; i++) {
-            stageMap[i] = { week: i, shortLabel: i === 5 ? 'Wrap-up' : ('Week ' + i), phase: '' };
+            stageMap[i] = { week: i, shortLabel: i === 5 ? 'Wrap-up' : ('Category ' + i) };
             weeks.push(i);
           }
         }
@@ -810,7 +809,7 @@
           var timelineText = t.timeline || ('Week ' + wk);
           var tdTimeline = h('td', { colspan: compact ? '3' : '6', class: 'bg-base-200/60 py-2' });
           var groupBar = h('div', { class: 'flex items-center gap-x-3 gap-y-1 flex-wrap' },
-            f.phase ? null : h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: timelineText.split('\n')[0] }),
+            h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: timelineText.split('\n')[0].replace(/^Week\b/i, 'Category') }),
             h('span', { class: 'text-sm font-semibold', text: (f.phase || i18n.t('未命名階段', 'Untitled Stage')).replace(/^\d+\.\s*/, '') })
           );
           if (firstOfWeek) {
@@ -1097,7 +1096,7 @@
             tplTableBody.appendChild(h('tr', {},
               h('td', { colspan: '6', class: 'bg-base-200/60 py-2' },
                 h('div', { class: 'flex items-center gap-2' },
-                  h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: tpl.timeline || ('Week ' + wk) }),
+                  h('span', { class: 'badge badge-primary badge-sm whitespace-nowrap', text: (tpl.timeline || ('Week ' + wk)).replace(/^Week\b/i, 'Category') }),
                   h('span', { class: 'text-sm font-semibold', text: (f.phase || '').replace(/^\d+\.\s*/, '') })
                 )
               )
