@@ -939,30 +939,22 @@
               type: 'date',
               class: 'input input-bordered input-xs w-32 text-xs',
               value: t.endDate || '',
-              title: i18n.t('結束日期（修改後自動遞推後續週期）', 'End Date (auto-cascades following weeks)'),
+              title: i18n.t('結束日期', 'End Date'),
               onchange: function (ev) {
                 var newEnd = ev.target.value || '';
-                var ops = weekTaskIds.map(function (tid) { return sync.save(COL_TASKS, tid, { endDate: newEnd, updatedAt: Date.now() }); });
-                if (newEnd) {
-                  ops = ops.concat(buildCascadedTaskDateUpdates(selectedHireId, wk, newEnd));
-                }
-                run(Promise.all(ops));
+                run(Promise.all(weekTaskIds.map(function (tid) { return sync.save(COL_TASKS, tid, { endDate: newEnd, updatedAt: Date.now() }); })));
               }
             });
             var startInput = h('input', {
               type: 'date',
               class: 'input input-bordered input-xs w-32 text-xs',
               value: t.startDate || '',
-              title: i18n.t('開始日期（選擇後自動帶入本週結束日並遞推後續週期）', 'Start Date (auto-fills End Date & cascades following weeks)'),
+              title: i18n.t('開始日期（選擇後自動帶入本週結束日）', 'Start Date (auto-fills this Category\'s End Date)'),
               onchange: function (ev) {
                 var newStart = ev.target.value || '';
                 var autoEnd = newStart ? calcDefaultWorkEndDate(newStart) : '';
                 endInput.value = autoEnd;
-                var ops = weekTaskIds.map(function (tid) { return sync.save(COL_TASKS, tid, { startDate: newStart, endDate: autoEnd, updatedAt: Date.now() }); });
-                if (autoEnd) {
-                  ops = ops.concat(buildCascadedTaskDateUpdates(selectedHireId, wk, autoEnd));
-                }
-                run(Promise.all(ops));
+                run(Promise.all(weekTaskIds.map(function (tid) { return sync.save(COL_TASKS, tid, { startDate: newStart, endDate: autoEnd, updatedAt: Date.now() }); })));
               }
             });
             dateBox.appendChild(h('div', { class: 'flex items-center gap-1 text-[11px] text-base-content/60' },
@@ -1945,11 +1937,7 @@
             payload.createdAt = Date.now();
           }
           taskModal.close();
-          var ops = [sync.save(COL_TASKS, id, payload)];
-          if (endDate) {
-            ops = ops.concat(buildCascadedTaskDateUpdates(selectedHireId, wk, endDate));
-          }
-          run(Promise.all(ops));
+          run(sync.save(COL_TASKS, id, payload));
         });
 
         editReviewBtn.addEventListener('click', function () {
