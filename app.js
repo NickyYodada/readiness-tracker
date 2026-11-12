@@ -956,8 +956,8 @@
               title: i18n.t('開始日期（選擇後自動帶入本週結束日並遞推後續週期）', 'Start Date (auto-fills End Date & cascades following weeks)'),
               onchange: function (ev) {
                 var newStart = ev.target.value || '';
-                var autoEnd = newStart ? calcDefaultWorkEndDate(newStart) : (endInput.value || '');
-                if (autoEnd) endInput.value = autoEnd;
+                var autoEnd = newStart ? calcDefaultWorkEndDate(newStart) : '';
+                endInput.value = autoEnd;
                 var ops = weekTaskIds.map(function (tid) { return sync.save(COL_TASKS, tid, { startDate: newStart, endDate: autoEnd, updatedAt: Date.now() }); });
                 if (autoEnd) {
                   ops = ops.concat(buildCascadedTaskDateUpdates(selectedHireId, wk, autoEnd));
@@ -974,8 +974,10 @@
               endInput
             ));
             groupBar.appendChild(dateBox);
-          } else if ((!canWrite || compact) && firstOfWeek && (t.startDate || t.endDate)) {
-            var rangeStr = (t.startDate || '?') + ' ~ ' + (t.endDate || '?');
+          } else if ((!canWrite || compact) && firstOfWeek) {
+            var rangeStr = (t.startDate || t.endDate)
+              ? ((t.startDate || i18n.t('未規劃', 'TBD')) + ' ~ ' + (t.endDate || i18n.t('未規劃', 'TBD')))
+              : i18n.t('未規劃', 'Not scheduled');
             groupBar.appendChild(h('span', { class: 'badge badge-ghost badge-xs font-normal ml-auto', text: rangeStr }));
           }
 
